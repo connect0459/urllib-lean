@@ -16,8 +16,9 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 - [x] **Quality gates** — pre-commit hooks (`lake build --wfail`, `lake test`, markdownlint), `justfile`
 - [x] **CI** — `.github/workflows/ci.yml`, dependabot
 - [ ] **Create the GitHub repository and push** — `connect0459/urllib-lean`
+- [ ] **Coverage measurement spike** — no Lean coverage tool exists; evaluate compiling the library with `--coverage` (gcov / llvm-cov on Lean's generated C) and running the test vectors from a `lean_exe` driver, because `#guard` runs in the elaborator and is not measured; until then, track branches by hand against the test matrix
 - [ ] **Verify the first CI run** — the `leanprover/lean-action` inputs (`build-args`, `test`, `lint`, `use-github-cache`) are unverified
-- [ ] **Remove `UrllibTest/.gitkeep`** — once the first test file exists
+- [x] **Remove `UrllibTest/.gitkeep`** — once the first test file exists
 - [x] **Run `pre-commit install`** — via `just setup`
 
 ---
@@ -26,7 +27,7 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 
 ### Decisions to make before implementation
 
-- [ ] **Coverage target** — not yet agreed; implementation started with RFC samples, edge cases, and failure cases covering every decoder error variant
+- [x] **Coverage target** — C0 (statement) and C1 (branch) coverage: 100% where achievable, 90% as the floor; proof-only declarations (`theorem`) are excluded from the measurement
 - [x] **Public API shape** — `encode : String → String` (total) and `decode : String → Except DecodeError String`, both over code points
 - [x] **Error model** — `DecodeError`: `nonBasicCodePoint`, `invalidDigit`, `truncated`, `invalidCodePoint`; no `overflow` because `Nat` arithmetic cannot overflow, so an out-of-range result surfaces as `invalidCodePoint`
 - [x] **Dependency policy** — Lean core only; no external packages
