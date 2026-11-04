@@ -71,7 +71,7 @@ def parseFailures : List String :=
 
 def zeroRunPattern (mask : Nat) : Ipv6 :=
   Ipv6.ofPieces ((List.range 8).map fun i =>
-    if mask / 2 ^ i % 2 = 1 then 0 else (i + 1) * 0x1111).toArray
+    if mask / 2 ^ i % 2 = 1 then 0 else (i + 1) * 0x1111)
 
 /-- info: [] -/
 #guard_msgs in
