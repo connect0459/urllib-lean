@@ -485,7 +485,7 @@ private theorem encodeIntegerFrom_ne_dash (bias : Nat) : ∀ q k, ∀ c ∈ enco
           unfold base
           exact Nat.lt_of_le_of_lt (Nat.div_le_self _ _) (by omega)) _ c hc
 
-private theorem encodeInsertions_ne_dash : ∀ (plan cur : List (Nat × Nat)) (n i bias : Nat),
+theorem encodeInsertions_ne_dash : ∀ (plan cur : List (Nat × Nat)) (n i bias : Nat),
     ∀ c ∈ encodeInsertions cur n i bias plan, c ≠ '-'
   | [], _, _, _, _ => by simp [encodeInsertions]
   | it :: rest, cur, n, i, bias => by
@@ -621,5 +621,38 @@ theorem decode_encode (s : String) : decode (encode s) = .ok s := by
     simp [List.map_map, Function.comp_def]
   rw [hs] at h
   exact h
+
+theorem zipIdx_filter_map_fst (p : Nat → Bool) : ∀ (T : List Nat) (k : Nat),
+    ((T.zipIdx k).filter (fun x => p x.1)).map Prod.fst = T.filter p := by
+  intro T
+  induction T with
+  | nil => intro k; simp
+  | cons c T ih =>
+    intro k
+    rw [List.zipIdx_cons, List.filter_cons, List.filter_cons]
+    by_cases h : p c = true <;> simp [h, ih]
+
+theorem basicItems_map_fst (T : List Nat) :
+    (basicItems T).map Prod.fst = T.filter (fun c => decide (c < 128)) := by
+  unfold basicItems
+  exact zipIdx_filter_map_fst (fun c => decide (c < 128)) T 0
+
+theorem basic_chars (s : String) :
+    (basicItems (s.toList.map Char.toNat)).map (fun x => Char.ofNat x.1) =
+      s.toList.filter (fun c => decide (c.toNat < 128)) := by
+  have h := basicItems_map_fst (s.toList.map Char.toNat)
+  have h2 : (s.toList.map Char.toNat).filter (fun c => decide (c < 128)) =
+      (s.toList.filter (fun c => decide (c.toNat < 128))).map Char.toNat := by
+    rw [List.filter_map]; rfl
+  rw [h2] at h
+  calc (basicItems (s.toList.map Char.toNat)).map (fun x => Char.ofNat x.1)
+      = ((basicItems (s.toList.map Char.toNat)).map Prod.fst).map Char.ofNat := by
+        rw [List.map_map]; rfl
+    _ = ((s.toList.filter (fun c => decide (c.toNat < 128))).map Char.toNat).map Char.ofNat := by
+        rw [h]
+    _ = s.toList.filter (fun c => decide (c.toNat < 128)) := by
+        rw [List.map_map]
+        have h3 : ∀ c : Char, Char.ofNat c.toNat = c := Char.ofNat_toNat
+        simp only [Function.comp_def, h3, List.map_id']
 
 end Urllib.Punycode

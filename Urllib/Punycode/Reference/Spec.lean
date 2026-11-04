@@ -565,39 +565,6 @@ private theorem loop_lemma (T : List Nat) (b : Nat) (hT : ∀ x ∈ T, x < 0x110
       · have e : Reference.encodeLoop b T (fuel + 1) st = st := by simp [Reference.encodeLoop, hlt]
         rw [e]; omega
 
-private theorem zipIdx_filter_map_fst (p : Nat → Bool) : ∀ (T : List Nat) (k : Nat),
-    ((T.zipIdx k).filter (fun x => p x.1)).map Prod.fst = T.filter p := by
-  intro T
-  induction T with
-  | nil => intro k; simp
-  | cons c T ih =>
-    intro k
-    rw [List.zipIdx_cons, List.filter_cons, List.filter_cons]
-    by_cases h : p c = true <;> simp [h, ih]
-
-private theorem basicItems_map_fst (T : List Nat) :
-    (basicItems T).map Prod.fst = T.filter (fun c => decide (c < 128)) := by
-  unfold basicItems
-  exact zipIdx_filter_map_fst (fun c => decide (c < 128)) T 0
-
-private theorem basic_chars (s : String) :
-    (basicItems (s.toList.map Char.toNat)).map (fun x => Char.ofNat x.1) =
-      s.toList.filter (fun c => decide (c.toNat < 128)) := by
-  have h := basicItems_map_fst (s.toList.map Char.toNat)
-  have h2 : (s.toList.map Char.toNat).filter (fun c => decide (c < 128)) =
-      (s.toList.filter (fun c => decide (c.toNat < 128))).map Char.toNat := by
-    rw [List.filter_map]; rfl
-  rw [h2] at h
-  calc (basicItems (s.toList.map Char.toNat)).map (fun x => Char.ofNat x.1)
-      = ((basicItems (s.toList.map Char.toNat)).map Prod.fst).map Char.ofNat := by
-        rw [List.map_map]; rfl
-    _ = ((s.toList.filter (fun c => decide (c.toNat < 128))).map Char.toNat).map Char.ofNat := by
-        rw [h]
-    _ = s.toList.filter (fun c => decide (c.toNat < 128)) := by
-        rw [List.map_map]
-        have h3 : ∀ c : Char, Char.ofNat c.toNat = c := Char.ofNat_toNat
-        simp only [Function.comp_def, h3, List.map_id']
-
 private theorem emitted_eq_plan (T : List Nat) (G : List (Nat × Nat)) (n : Nat)
     (hmem : ∀ x, x ∈ G ↔ (x ∈ T.zipIdx ∧ 128 ≤ x.1 ∧ x.1 < n))
     (hpw : G.Pairwise (fun a c => a.2 ≠ c.2 ∧ (a.1 < c.1 ∨ (a.1 = c.1 ∧ a.2 < c.2))))
