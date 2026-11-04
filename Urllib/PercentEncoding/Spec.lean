@@ -229,4 +229,63 @@ theorem utf8DecodeWithoutBom_percentDecodeString_ascii (s : String)
   · rw [decodeUtf8Loop_ascii s.toList [] hascii]
     simp
 
+inductive WellEncoded (set : EncodeSet) : List Char → Prop where
+  | nil : WellEncoded set []
+  | raw (c : Char) (rest : List Char) :
+      set.contains c = false → WellEncoded set rest → WellEncoded set (c :: rest)
+  | escape (b : UInt8) (rest : List Char) :
+      WellEncoded set rest → WellEncoded set (percentEncodeByteChars b ++ rest)
+
+theorem WellEncoded.append {set : EncodeSet} {l₁ l₂ : List Char}
+    (h₁ : WellEncoded set l₁) (h₂ : WellEncoded set l₂) : WellEncoded set (l₁ ++ l₂) := by
+  induction h₁ with
+  | nil => simpa using h₂
+  | raw c rest hc _ ih => exact WellEncoded.raw c _ hc ih
+  | escape b rest _ ih =>
+    rw [List.append_assoc]
+    exact WellEncoded.escape b _ ih
+
+private theorem wellEncoded_escapes (set : EncodeSet) : ∀ bytes : List UInt8,
+    WellEncoded set (bytes.flatMap percentEncodeByteChars) := by
+  intro bytes
+  induction bytes with
+  | nil => exact WellEncoded.nil
+  | cons b bs ih =>
+    rw [List.flatMap_cons]
+    exact WellEncoded.escape b _ ih
+
+private theorem wellEncoded_codePoint (set : EncodeSet) (c : Char) :
+    WellEncoded set (utf8PercentEncodeCodePointChars set c) := by
+  unfold utf8PercentEncodeCodePointChars
+  by_cases hc : set.contains c = true
+  · simp only [hc, ite_true]
+    exact wellEncoded_escapes set _
+  · have hc' : set.contains c = false := by simpa using hc
+    simp only [hc', Bool.false_eq_true, ite_false]
+    exact WellEncoded.raw c [] hc' WellEncoded.nil
+
+private theorem wellEncoded_flatMap (set : EncodeSet) : ∀ cs : List Char,
+    WellEncoded set (cs.flatMap (utf8PercentEncodeCodePointChars set)) := by
+  intro cs
+  induction cs with
+  | nil => exact WellEncoded.nil
+  | cons c cs ih =>
+    rw [List.flatMap_cons]
+    exact (wellEncoded_codePoint set c).append ih
+
+theorem utf8PercentEncode_wellEncoded (set : EncodeSet) (input : String) :
+    WellEncoded set (utf8PercentEncode set input).toList := by
+  unfold utf8PercentEncode
+  rw [String.toList_ofList]
+  exact wellEncoded_flatMap set _
+
+theorem percentEncodeByteChars_form (b : UInt8) :
+    ∃ hi lo, hi < 16 ∧ lo < 16 ∧ percentEncodeByteChars b = ['%', hexDigit hi, hexDigit lo] := by
+  have := b.toNat_lt
+  exact ⟨b.toNat / 16, b.toNat % 16, by omega, Nat.mod_lt _ (by omega), rfl⟩
+
+theorem hexDigit_upper_hex : ∀ n, n < 16 →
+    ('0' ≤ hexDigit n ∧ hexDigit n ≤ '9') ∨ ('A' ≤ hexDigit n ∧ hexDigit n ≤ 'F') := by
+  decide
+
 end Urllib.PercentEncoding
