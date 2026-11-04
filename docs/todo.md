@@ -1,6 +1,6 @@
 # todo - urllib-lean
 
-Current state: **M1 Punycode and M2 percent-encoding implemented and tested; host parsing not started; full round-trip proofs open**  
+Current state: **M1 (Punycode) and M2 (percent-encoding, host parsing) implemented and tested; round-trip proofs for Punycode, percent-encoding, IPv4, and IPv6 open**  
 Target: **v0.1.0 = M1 (Punycode, RFC 3492, with a machine-checked round-trip property) + M2 (percent-encoding and host parsing)**
 
 Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Pattern Standard. See the milestone table in `README.md`.
@@ -66,9 +66,9 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 
 ### Decisions to make before implementation
 
-- [ ] **Domain handling without UTS #46** — full IDNA processing (mapping table, NFC, Bidi / Joiners) is out of scope for v0.1.0; agree on the interim behavior for non-ASCII domains (reject with a dedicated error vs. Punycode-encode labels without mapping)
+- [x] **Domain handling without UTS #46** — full IDNA processing (mapping table, NFC, Bidi / Joiners) is out of scope for v0.1.0; non-ASCII domains are rejected with `nonAsciiDomain`, and ASCII domains are lowercased with `xn--` labels passed through unchanged (as in the MoonBit `urllib`)
 - [x] **Module layout** — `Urllib.PercentEncoding` and `Urllib.Host` (with `Ipv4`, `Ipv6`, `OpaqueHost`); `Host` depends on `PercentEncoding` and `Punycode`, never the reverse
-- [ ] **`Host` representation** — an inductive type (`domain`, `ipv4`, `ipv6`, `opaque`, `empty`) with smart constructors that enforce the invariants
+- [x] **`Host` representation** — an inductive type (`domain`, `ipv4`, `ipv6`, `opaqueHost`, `empty`); invariants are established by `Host.parse`; smart constructors are deferred until the URL parser (M3) shows which invariants callers rely on
 
 ### Percent-encoding (WHATWG URL Standard, section 1.3)
 
@@ -82,16 +82,16 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 
 ### Host parsing (WHATWG URL Standard, section 3)
 
-- [ ] **Red** — tests for each host kind, using WPT host vectors where they exist
-- [ ] **Forbidden host / domain code points** — predicates
-- [ ] **IPv4 parser** — number parsing (decimal / octal / hex), part-count rules, overflow, "ends in a number" checker
-- [ ] **IPv6 parser** — compression, embedded IPv4, validation errors
-- [ ] **Opaque host parser** — forbidden code point check and C0 percent-encoding
-- [ ] **Domain host parser** — percent-decode, ASCII lowercase, forbidden code points, interim non-ASCII behavior per the decision above
-- [ ] **Host serializer** — IPv4 dotted form, IPv6 with the longest zero run compressed
-- [ ] **Proof: IPv4 round trip** — `parseIpv4 (serializeIpv4 a) = some a`
-- [ ] **Proof: IPv6 round trip** — `parseIpv6 (serializeIpv6 a) = some a`
-- [ ] **Proof: serialization idempotence** — `serialize (parse (serialize h)) = serialize h`
+- [x] **Red** — tests for each host kind (`UrllibTest/Host.lean`, `UrllibTest/Host/Ipv4.lean`, `UrllibTest/Host/Ipv6.lean`); WPT host vectors arrive with the URL parser in M3
+- [x] **Forbidden host / domain code points** — predicates
+- [x] **IPv4 parser** — number parsing (decimal / octal / hex), part-count rules, overflow, "ends in a number" checker
+- [x] **IPv6 parser** — compression, embedded IPv4, validation errors
+- [x] **Opaque host parser** — forbidden code point check and C0 percent-encoding
+- [x] **Domain host parser** — percent-decode, ASCII lowercase, forbidden code points, non-ASCII rejection per the decision above
+- [x] **Host serializer** — IPv4 dotted form, IPv6 with the longest zero run compressed
+- [ ] **Proof: IPv4 round trip** — `Ipv4.parse a.serialize = .ok a`; checked on 4096 samples, formal proof open
+- [ ] **Proof: IPv6 round trip** — `Ipv6.parse a.serialize = .ok a`; checked on all 256 zero-run patterns, formal proof open
+- [ ] **Proof: serialization idempotence** — `serialize (parse (serialize h)) = serialize h`; follows from the round-trip proofs for IP hosts
 
 ---
 
