@@ -107,22 +107,19 @@ def expandCompression (pieces : List Nat) (compress swaps : Nat) : List Nat :=
 def ofPieces (pieces : List Nat) : Ipv6 :=
   ⟨Vector.ofFn fun i => UInt16.ofNat pieces[i.val]!⟩
 
-def parseChars (input : List Char) : Except Ipv6Error Ipv6 := do
-  let (st, chars) ←
-    match input with
-    | ':' :: rest =>
-      match rest with
-      | ':' :: afterCompression =>
-        pure ({ pieceIndex := 1, compress := some 1 : ParseState }, afterCompression)
-      | _ => throw .invalidCompression
-    | chars => pure ({}, chars)
-  let st ← parseLoop (chars.length + 1) st chars
+def finishParse (st : ParseState) : Except Ipv6Error Ipv6 :=
   match st.compress with
   | some compress =>
-    return ofPieces (expandCompression st.pieces compress (st.pieceIndex - compress))
+    .ok (ofPieces (expandCompression st.pieces compress (st.pieceIndex - compress)))
   | none =>
-    if st.pieceIndex ≠ 8 then throw .tooFewPieces
-    return ofPieces st.pieces
+    if st.pieceIndex ≠ 8 then .error .tooFewPieces else .ok (ofPieces st.pieces)
+
+def parseChars (input : List Char) : Except Ipv6Error Ipv6 :=
+  match input with
+  | ':' :: ':' :: rest =>
+    parseLoop (rest.length + 1) { pieceIndex := 1, compress := some 1 } rest >>= finishParse
+  | ':' :: _ => .error .invalidCompression
+  | chars => parseLoop (chars.length + 1) {} chars >>= finishParse
 
 def parse (input : String) : Except Ipv6Error Ipv6 :=
   parseChars input.toList
