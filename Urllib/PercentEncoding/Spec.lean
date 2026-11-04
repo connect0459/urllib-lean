@@ -164,4 +164,69 @@ theorem percentDecode_utf8PercentEncode_component (s : String) :
     percentDecode (utf8PercentEncode .component s).toUTF8 = s.toUTF8 :=
   percentDecode_utf8PercentEncode .component s (Or.inl component_contains_percent)
 
+private theorem utf8EncodeChar_ascii (c : Char) (h : c.toNat < 128) :
+    String.utf8EncodeChar c = [UInt8.ofNat c.toNat] := by
+  have h0 : c.val.toNat ≤ 0x7f := by
+    have : c.toNat = c.val.toNat := rfl
+    omega
+  unfold String.utf8EncodeChar
+  dsimp only
+  simp only [h0, ↓reduceIte]
+  rfl
+
+private theorem decodeUtf8Loop_ascii : ∀ (cs : List Char) (acc : List Char),
+    (∀ c ∈ cs, c.toNat < 128) →
+    decodeUtf8Loop {} (cs.flatMap String.utf8EncodeChar) acc = cs.reverse ++ acc := by
+  intro cs
+  induction cs with
+  | nil => intro acc _; simp [decodeUtf8Loop]
+  | cons c cs ih =>
+    intro acc h
+    have hc : c.toNat < 128 := h c (by simp)
+    rw [List.flatMap_cons, utf8EncodeChar_ascii c hc, List.singleton_append, decodeUtf8Loop]
+    have hn : (UInt8.ofNat c.toNat).toNat = c.toNat := by simp; omega
+    have hfeed : feed {} (UInt8.ofNat c.toNat).toNat acc = ({}, c :: acc) := by
+      rw [hn]
+      unfold feed feedLead
+      have : c.toNat ≤ 0x7F := by omega
+      simp [this, Char.ofNat_toNat]
+    simp only [hfeed]
+    rw [ih (c :: acc) (fun x hx => h x (by simp [hx]))]
+    simp
+
+theorem utf8DecodeWithoutBom_percentDecodeString_ascii (s : String)
+    (h : ∀ c ∈ s.toList, c.toNat < 128 ∧ c ≠ '%') :
+    utf8DecodeWithoutBom (percentDecodeString s) = s := by
+  have hbytes : s.toUTF8.data.toList = s.toList.flatMap String.utf8EncodeChar := by
+    rw [← utf8_data_toList, String.ofList_toList]
+  have hnopct : ∀ b ∈ s.toList.flatMap String.utf8EncodeChar, b ≠ 0x25 := by
+    intro b hb
+    obtain ⟨c, hc, hbc⟩ := List.mem_flatMap.mp hb
+    exact utf8EncodeChar_ne_percent c (h c hc).2 b hbc
+  have hdec : (percentDecodeString s).data.toList = s.toList.flatMap String.utf8EncodeChar := by
+    unfold percentDecodeString percentDecode
+    simp only [hbytes]
+    have := decodeBytes_append_noPercent (s.toList.flatMap String.utf8EncodeChar) [] hnopct
+    simpa [decodeBytes] using this
+  have hascii : ∀ c ∈ s.toList, c.toNat < 128 := fun c hc => (h c hc).1
+  unfold utf8DecodeWithoutBom
+  rw [hdec]
+  dsimp only
+  have hnobom : ∀ rest, s.toList.flatMap String.utf8EncodeChar ≠ 0xEF :: 0xBB :: 0xBF :: rest := by
+    intro rest hr
+    cases hs : s.toList with
+    | nil => simp [hs] at hr
+    | cons c cs =>
+      rw [hs, List.flatMap_cons, utf8EncodeChar_ascii c (hascii c (by simp [hs]))] at hr
+      have := (List.cons.inj hr).1
+      have h2 := congrArg UInt8.toNat this
+      have h3 := hascii c (by simp [hs])
+      simp at h2
+      omega
+  split
+  · rename_i rest heq
+    exact absurd heq (hnobom rest)
+  · rw [decodeUtf8Loop_ascii s.toList [] hascii]
+    simp
+
 end Urllib.PercentEncoding
