@@ -21,12 +21,16 @@ Domain handling does not implement UTS #46: non-ASCII domains are rejected with 
 
 Pre-release (v0.1.0 in preparation). Nothing is published yet.
 
-| Milestone | Scope | State |
-| :--- | :--- | :--- |
-| M1 | Punycode (RFC 3492) with a round-trip proof | Done |
-| M2 | Percent-encoding and host parsing | Done |
-| M3 | URL parser and WPT conformance | Planned |
-| M4 | URL Pattern Standard | Planned |
+| Component | State |
+| :--- | :--- |
+| Punycode (RFC 3492) with a round-trip proof | Done |
+| Percent-encoding and host parsing | Done |
+| form-urlencoded and URLSearchParams | Planned |
+| UTS #46 (IDNA) | Planned |
+| URL parser and WPT conformance | Planned |
+| URL Pattern Standard | Planned |
+
+v0.1.0 will be released once all of the above are implemented.
 
 ## Installation
 
@@ -61,7 +65,7 @@ open Urllib
 
 ## Compliance
 
-The percent-encoding and host algorithms follow the URL Standard but are not yet checked against the Web Platform Tests; WPT conformance arrives with the URL parser in M3.
+The percent-encoding and host algorithms follow the URL Standard but are not yet checked against the Web Platform Tests; WPT conformance arrives with the URL parser.
 
 ### Proved properties
 
