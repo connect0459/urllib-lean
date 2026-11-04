@@ -96,4 +96,44 @@ theorem encode_isAscii (input : String) : IsAscii (encode input) := by
       | head => decide
       | tail _ h => cases h
 
+private theorem charToDigit_digitToChar : ∀ d, d < 36 → charToDigit? (digitToChar d) = some d := by
+  decide
+
+private theorem digit_weight_identity (i w t r c d q : Nat) (hq : q = t + r + c * d) :
+    i + (t + r) * w + d * (w * c) = i + q * w := by
+  subst hq
+  rw [Nat.add_mul (t + r) (c * d) w, Nat.mul_comm w c, ← Nat.mul_assoc, Nat.mul_comm d c]
+  omega
+
+theorem decodeInteger_encodeIntegerFrom (bias : Nat) :
+    ∀ q k (rest : List Char) i w,
+      decodeInteger bias (encodeIntegerFrom bias k q ++ rest) i w k = .ok (i + q * w, rest) := by
+  intro q
+  induction q using Nat.strongRecOn with
+  | _ q ih =>
+    intro k rest i w
+    have h1 := one_le_threshold k bias
+    have h2 := threshold_le k bias
+    rw [encodeIntegerFrom]
+    split
+    · rename_i hq
+      rw [List.cons_append, List.nil_append, decodeInteger, charToDigit_digitToChar q (by omega)]
+      simp [hq]
+    · rename_i hq
+      have hmod : (q - threshold k bias) % (base - threshold k bias) < base - threshold k bias :=
+        Nat.mod_lt _ (by unfold base; omega)
+      have hdiv := Nat.mod_add_div (q - threshold k bias) (base - threshold k bias)
+      have hlt : (q - threshold k bias) / (base - threshold k bias) < q :=
+        Nat.lt_of_le_of_lt (Nat.div_le_self _ _) (by omega)
+      rw [List.cons_append, decodeInteger,
+        charToDigit_digitToChar _ (by unfold base at hmod ⊢; omega)]
+      have hnot : ¬ (threshold k bias + (q - threshold k bias) % (base - threshold k bias)
+          < threshold k bias) := by omega
+      simp only [hnot, ite_false]
+      rw [ih _ hlt]
+      congr 2
+      exact digit_weight_identity i w (threshold k bias)
+        ((q - threshold k bias) % (base - threshold k bias)) (base - threshold k bias)
+        ((q - threshold k bias) / (base - threshold k bias)) q (by omega)
+
 end Urllib.Punycode
