@@ -52,7 +52,7 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 - [x] **Output is ASCII** — every code point of `encode s` is below 128 (`encode_isAscii`)
 - [x] **Variable-length integer round trip** — `decodeInteger` inverts `encodeIntegerFrom` (`decodeInteger_encodeIntegerFrom`)
 - [x] **Round trip** — `decode (encode s) = .ok s` for every string (`Punycode.decode_encode`); `encode` is stated through an insertion plan (non-basic code points sorted by value and position), and it is proved equal to the RFC scanning algorithm kept in `Reference.encode`
-- [ ] **Basic code points preserved** — the prefix before the delimiter equals the basic code points of the input (implied by the round trip, but not stated as its own theorem)
+- [x] **Basic code points preserved** — the encoding is the basic code points of the input in their original order, then a hyphen when there is at least one, then an extension without hyphens (`Punycode.encode_basic_prefix`, `encode_basic_prefix_of_nonempty`, `encode_no_delimiter_of_no_basic`)
 - [x] **Scanning encoder equals the plan-based encoder** — `Reference.encode = encode` for every string (`Punycode.reference_encode_eq`); the differential tests on the RFC samples and 3000 generated strings remain as a regression check
 - [x] **No `sorry` / `axiom`** — only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`) are used
 
