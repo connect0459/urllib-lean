@@ -12,7 +12,7 @@ This library is a Lean counterpart of [connect0459/urllib](https://github.com/co
 | Module | Main declarations |
 | :--- | :--- |
 | `Urllib.Punycode` | `encode : String → String`, `decode : String → Except DecodeError String` |
-| `Urllib.PercentEncoding` | `EncodeSet`, `utf8PercentEncode`, `percentDecode`, `utf8DecodeWithoutBom` |
+| `Urllib.PercentEncoding` | `EncodeSet`, `utf8PercentEncode`, `percentEncodeBytes`, `percentDecode`, `utf8DecodeWithoutBom`, `utf8DecodeWithoutBomOrFail` |
 | `Urllib.Host` | `Host`, `Host.parse (input : String) (isOpaque : Bool)`, `Host.serialize`, `Host.Ipv4`, `Host.Ipv6` |
 
 Domain handling does not implement UTS #46: non-ASCII domains are rejected with `Host.Error.nonAsciiDomain`, ASCII domains are lowercased, and `xn--` labels pass through unchanged.
@@ -50,6 +50,8 @@ open Urllib
 #eval PercentEncoding.utf8PercentEncode .path "a b/ü?"   -- "a%20b/%C3%BC%3F"
 #eval PercentEncoding.utf8DecodeWithoutBom
   (PercentEncoding.percentDecodeString "%E3%81%82%20b")  -- "あ b"
+#eval PercentEncoding.percentEncodeBytes .path (ByteArray.mk #[0x61, 0x20, 0xFF])  -- "a%20%FF"
+#eval PercentEncoding.utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xFF])  -- none
 
 #eval Host.parse "EXAMPLE.com" false           -- Except.ok (Host.domain "example.com")
 #eval (Host.parse "0x7f.1" false).map Host.serialize     -- Except.ok "127.0.0.1"

@@ -116,10 +116,10 @@ Compared with existing URL implementations in other languages, restricted to the
 
 ### Candidate gaps
 
-- [ ] **Percent-encode a byte sequence** — a byte-slice variant exists in the references; the URL Standard's "percent-encode after encoding" works on bytes, while only `String` / `Char` inputs exist here
-- [ ] **Strict UTF-8 decode** — a strict decoder exists in the references, and the Standard defines "UTF-8 decode without BOM or fail"; only the replacement (lossy) variant exists
-- [ ] **`Host.empty` is never produced by `Host.parse`** — a reference implementation returns an empty domain for an empty non-special host, and here the opaque parser returns `opaqueHost ""`; decide whether `parse` should return `.empty` and prove the idempotence theorem for it
-- [ ] **Opaque-path trailing-space encoding** — an opaque-path encoder that encodes a trailing space exists in the references; it is used by the URL parser (M3)
+- [x] **Percent-encode a byte sequence** — `percentEncodeBytes` and `EncodeSet.containsByte`; agrees with `utf8PercentEncode` on the UTF-8 bytes of a string (checked by tests on every set; not proved)
+- [x] **Strict UTF-8 decode** — `utf8DecodeWithoutBomOrFail` returns `none` on malformed input (truncated, overlong, surrogate, above U+10FFFF, stray continuation)
+- [x] **`Host.empty` is never produced by `Host.parse`** — the opaque-host parser now returns `.empty` for empty input; `Host.parse_serialize_of_parse` covers it, and an empty domain stays an error (`emptyDomain`)
+- [ ] **Opaque-path trailing-space encoding** — deferred to M3: its behavior is defined by the URL parser's handling of `?` and `#` after an opaque path, so it cannot be specified or tested in isolation
 
 ---
 
