@@ -17,7 +17,7 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 - [x] **CI** — `.github/workflows/ci.yml`, dependabot
 - [ ] **Create the GitHub repository and push** — `connect0459/urllib-lean`
 - [x] **Coverage measurement** — `just coverage` builds an instrumented copy with the system clang and summarizes the library on the generated C (see `docs/coverage.md`); the floor is met: functions 99.0%, regions 98.0%, branch arms 94.5%, with compiler-generated helpers and object reuse branches reported separately
-- [ ] **Close the remaining coverage gaps** — reach 100% where a test can: uppercase and out-of-range characters in `charToDigit?`, `decodeLoop` branches, partial BOM prefixes in `utf8DecodeWithoutBom`, `utf8PercentEncodeCodePoint` (never called), `inFragmentSet` / `inQuerySet`, and the uncovered branches of `Ipv4.endsInNumber` / `parseChars`, `Ipv6.parseLoop` / `readIpv4Parts` / `readDecimalPiece` / `printFrom`; list them with `just coverage --list-missed`
+- [x] **Close the remaining coverage gaps** — functions, regions, and branch arms of the library are at 100% (see `docs/coverage.md`); 7 regions and 7 arms are accepted as unreachable by construction in `scripts/coverage_accepted.json`, each with a reason
 - [ ] **Run the coverage script on Linux** — verified on macOS only; add a CI job once it runs there
 - [ ] **Verify the first CI run** — the `leanprover/lean-action` inputs (`build-args`, `test`, `lint`, `use-github-cache`) are unverified
 - [x] **Remove `UrllibTest/.gitkeep`** — once the first test file exists
