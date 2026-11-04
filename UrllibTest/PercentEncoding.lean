@@ -1,3 +1,4 @@
+import UrllibTest.Support
 import Urllib.PercentEncoding
 
 namespace UrllibTest.PercentEncoding
@@ -142,13 +143,18 @@ def utf8Failures : List String :=
 #guard_msgs in
 #eval utf8Failures
 
-#guard (percentDecode (ByteArray.mk #[0x25])).toList == [0x25]
-#guard (percentDecode (ByteArray.mk #[0x25, 0x34, 0x31])).toList == [0x41]
-#guard (percentDecode (ByteArray.mk #[0x25, 0x34])).toList == [0x25, 0x34]
-#guard (percentDecode (ByteArray.mk #[0x25, 0x46, 0x46])).toList == [0xFF]
+def guardChecks : List UrllibTest.Check := [
+  { name := "keeps a lone percent sign as a byte", holds := (percentDecode (ByteArray.mk #[0x25])).toList == [0x25] },
+  { name := "decodes an escape of two decimal digits", holds := (percentDecode (ByteArray.mk #[0x25, 0x34, 0x31])).toList == [0x41] },
+  { name := "keeps an incomplete escape", holds := (percentDecode (ByteArray.mk #[0x25, 0x34])).toList == [0x25, 0x34] },
+  { name := "decodes an escape of uppercase hexadecimal digits", holds := (percentDecode (ByteArray.mk #[0x25, 0x46, 0x46])).toList == [0xFF] },
+  { name := "escapes the zero byte", holds := percentEncodeByte 0x00 == "%00" },
+  { name := "escapes the largest byte", holds := percentEncodeByte 0xFF == "%FF" },
+  { name := "escapes a letter byte with uppercase digits", holds := percentEncodeByte 0x7A == "%7A" }
+]
 
-#guard percentEncodeByte 0x00 == "%00"
-#guard percentEncodeByte 0xFF == "%FF"
-#guard percentEncodeByte 0x7A == "%7A"
+/-- info: [] -/
+#guard_msgs in
+#eval UrllibTest.failedChecks guardChecks
 
 end UrllibTest.PercentEncoding

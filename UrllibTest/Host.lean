@@ -1,3 +1,4 @@
+import UrllibTest.Support
 import Urllib.Host
 
 namespace UrllibTest.Host
@@ -107,11 +108,17 @@ def parseFailures (cases : List ParseCase) : List String :=
 #guard_msgs in
 #eval parseFailures opaqueCases
 
-#guard match Host.parse "example.com" false with | .ok (.domain name) => name == "example.com" | _ => false
-#guard match Host.parse "127.0.0.1" false with | .ok (.ipv4 address) => address.value == 0x7F000001 | _ => false
-#guard match Host.parse "[::1]" false with | .ok (.ipv6 _) => true | _ => false
-#guard match Host.parse "a b" true with | .error .forbiddenHostCodePoint => true | _ => false
-#guard match Host.parse "ab" true with | .ok (.opaqueHost text) => text == "ab" | _ => false
-#guard Host.serialize .empty == ""
+def guardChecks : List UrllibTest.Check := [
+  { name := "parses a plain domain into a domain host", holds := match Host.parse "example.com" false with | .ok (.domain name) => name == "example.com" | _ => false },
+  { name := "parses a dotted-decimal host into the matching IPv4 value", holds := match Host.parse "127.0.0.1" false with | .ok (.ipv4 address) => address.value == 0x7F000001 | _ => false },
+  { name := "parses a bracketed host into an IPv6 host", holds := match Host.parse "[::1]" false with | .ok (.ipv6 _) => true | _ => false },
+  { name := "rejects a space in an opaque host with the forbidden host code point error", holds := match Host.parse "a b" true with | .error .forbiddenHostCodePoint => true | _ => false },
+  { name := "parses an opaque host into an opaque host", holds := match Host.parse "ab" true with | .ok (.opaqueHost text) => text == "ab" | _ => false },
+  { name := "serializes the empty host to the empty string", holds := Host.serialize .empty == "" }
+]
+
+/-- info: [] -/
+#guard_msgs in
+#eval UrllibTest.failedChecks guardChecks
 
 end UrllibTest.Host

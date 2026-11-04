@@ -1,3 +1,4 @@
+import UrllibTest.Support
 import UrllibTest.Punycode
 import Urllib.Punycode.Reference
 
@@ -37,6 +38,12 @@ def rfc3492Disagreements : List String :=
 #guard_msgs in
 #eval rfc3492Disagreements
 
-#guard (generate 5 9).length == 9
+def guardChecks : List UrllibTest.Check := [
+  { name := "generates strings of the requested length", holds := (generate 5 9).length == 9 }
+]
+
+/-- info: [] -/
+#guard_msgs in
+#eval UrllibTest.failedChecks guardChecks
 
 end UrllibTest.PunycodeReference

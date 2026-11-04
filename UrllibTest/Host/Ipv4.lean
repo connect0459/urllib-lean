@@ -1,3 +1,4 @@
+import UrllibTest.Support
 import Urllib.Host.Ipv4
 
 namespace UrllibTest.Host.Ipv4
@@ -94,9 +95,15 @@ def roundTripSamples : List UInt32 :=
 #eval roundTripSamples.filter fun value =>
   (Ipv4.parse (Ipv4.mk value).serialize).toOption != some (Ipv4.mk value)
 
-#guard (Ipv4.mk 0).serialize == "0.0.0.0"
-#guard (Ipv4.mk 0x7F000001).serialize == "127.0.0.1"
-#guard (Ipv4.mk 0xFFFFFFFF).serialize == "255.255.255.255"
-#guard (Ipv4.mk 0x01020304).serialize == "1.2.3.4"
+def guardChecks : List UrllibTest.Check := [
+  { name := "serializes zero", holds := (Ipv4.mk 0).serialize == "0.0.0.0" },
+  { name := "serializes the loopback address", holds := (Ipv4.mk 0x7F000001).serialize == "127.0.0.1" },
+  { name := "serializes the broadcast address", holds := (Ipv4.mk 0xFFFFFFFF).serialize == "255.255.255.255" },
+  { name := "serializes an address with one distinct value per byte", holds := (Ipv4.mk 0x01020304).serialize == "1.2.3.4" }
+]
+
+/-- info: [] -/
+#guard_msgs in
+#eval UrllibTest.failedChecks guardChecks
 
 end UrllibTest.Host.Ipv4

@@ -1,3 +1,4 @@
+import UrllibTest.Support
 import Urllib.Punycode
 
 namespace UrllibTest.Punycode
@@ -58,40 +59,31 @@ def rfc3492SamplesDecodedExactly : List String :=
 #guard_msgs in
 #eval rfc3492SamplesDecodedExactly
 
-#guard rfc3492Samples.length == 19
+def guardChecks : List UrllibTest.Check := [
+  { name := "lists the 19 RFC 3492 sample strings", holds := rfc3492Samples.length == 19 },
+  { name := "encodes the empty string to the empty string", holds := encode "" == "" },
+  { name := "decodes the empty string to the empty string", holds := decoded "" == some "" },
+  { name := "encodes ASCII-only text with a trailing delimiter", holds := encode "abc" == "abc-" },
+  { name := "decodes ASCII-only text with a trailing delimiter", holds := decoded "abc-" == some "abc" },
+  { name := "encodes a single accented letter", holds := encode "ü" == "tda" },
+  { name := "decodes a single accented letter", holds := decoded "tda" == some "ü" },
+  { name := "encodes a word mixing ASCII and one non-ASCII letter", holds := encode "München" == "Mnchen-3ya" },
+  { name := "decodes a word mixing ASCII and one non-ASCII letter", holds := decoded "Mnchen-3ya" == some "München" },
+  { name := "encodes a second word with an umlaut", holds := encode "bücher" == "bcher-kva" },
+  { name := "encodes two equal non-ASCII code points", holds := encode "üü" == "tdaa" },
+  { name := "encodes a supplementary-plane code point", holds := encode (String.singleton (Char.ofNat 0x1F600)) == "e28h" },
+  { name := "encodes a supplementary-plane code point between ASCII letters", holds := encode ("a" ++ String.singleton (Char.ofNat 0x1F600) ++ "b") == "ab-no82a" },
+  { name := "decodes a lone delimiter to the empty string", holds := decoded "-" == some "" },
+  { name := "keeps a delimiter that belongs to the basic code points", holds := decoded "abc--" == some "abc-" },
+  { name := "rejects a non-digit character with the invalid digit error", holds := decodeError "a!" == some .invalidDigit },
+  { name := "rejects an integer that needs a continuation with the truncated error", holds := decodeError "9" == some .truncated },
+  { name := "rejects a truncated integer after a delimiter", holds := decodeError "ab-9" == some .truncated },
+  { name := "rejects a non-ASCII character before the delimiter", holds := decodeError "ü-tda" == some .nonBasicCodePoint },
+  { name := "rejects a delta that leaves the Unicode range", holds := decodeError "99999999a" == some .invalidCodePoint }
+]
 
-#guard encode "" == ""
-#guard decoded "" == some ""
-
-#guard encode "abc" == "abc-"
-#guard decoded "abc-" == some "abc"
-
-#guard encode "ü" == "tda"
-#guard decoded "tda" == some "ü"
-
-#guard encode "München" == "Mnchen-3ya"
-#guard decoded "Mnchen-3ya" == some "München"
-
-#guard encode "bücher" == "bcher-kva"
-
-#guard encode "üü" == "tdaa"
-
-#guard encode (String.singleton (Char.ofNat 0x1F600)) == "e28h"
-
-#guard encode ("a" ++ String.singleton (Char.ofNat 0x1F600) ++ "b") == "ab-no82a"
-
-#guard decoded "-" == some ""
-
-#guard decoded "abc--" == some "abc-"
-
-#guard decodeError "a!" == some .invalidDigit
-
-#guard decodeError "9" == some .truncated
-
-#guard decodeError "ab-9" == some .truncated
-
-#guard decodeError "ü-tda" == some .nonBasicCodePoint
-
-#guard decodeError "99999999a" == some .invalidCodePoint
+/-- info: [] -/
+#guard_msgs in
+#eval UrllibTest.failedChecks guardChecks
 
 end UrllibTest.Punycode
