@@ -69,4 +69,13 @@ def parseFailures : List String :=
 #guard_msgs in
 #eval parseFailures
 
+def zeroRunPattern (mask : Nat) : Ipv6 :=
+  Ipv6.ofPieces ((List.range 8).map fun i =>
+    if mask / 2 ^ i % 2 = 1 then 0 else (i + 1) * 0x1111).toArray
+
+/-- info: [] -/
+#guard_msgs in
+#eval (List.range 256).filter fun mask =>
+  (Ipv6.parse (zeroRunPattern mask).serialize).toOption != some (zeroRunPattern mask)
+
 end UrllibTest.Host.Ipv6

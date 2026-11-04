@@ -86,6 +86,14 @@ def endsInNumberFailures : List String :=
 #guard_msgs in
 #eval endsInNumberFailures
 
+def roundTripSamples : List UInt32 :=
+  (List.range 4096).map fun i => UInt32.ofNat (i * 1048583 % 4294967296)
+
+/-- info: [] -/
+#guard_msgs in
+#eval roundTripSamples.filter fun value =>
+  (Ipv4.parse (Ipv4.mk value).serialize).toOption != some (Ipv4.mk value)
+
 #guard (Ipv4.mk 0).serialize == "0.0.0.0"
 #guard (Ipv4.mk 0x7F000001).serialize == "127.0.0.1"
 #guard (Ipv4.mk 0xFFFFFFFF).serialize == "255.255.255.255"
