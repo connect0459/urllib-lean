@@ -112,9 +112,9 @@ theorem decodeInteger_encodeIntegerFrom (bias : Nat) :
         ((q - threshold k bias) % (base - threshold k bias)) (base - threshold k bias)
         ((q - threshold k bias) / (base - threshold k bias)) q (by omega)
 
-private def SortedIdx (l : List (Nat × Nat)) : Prop := l.Pairwise (fun a b => a.2 < b.2)
+def SortedIdx (l : List (Nat × Nat)) : Prop := l.Pairwise (fun a b => a.2 < b.2)
 
-private theorem insertAt_perm {α : Type} (xs : List α) (i : Nat) (x : α) :
+theorem insertAt_perm {α : Type} (xs : List α) (i : Nat) (x : α) :
     (insertAt xs i x).Perm (x :: xs) := by
   unfold insertAt
   have := List.perm_middle (a := x) (l₁ := xs.take i) (l₂ := xs.drop i)
@@ -124,7 +124,7 @@ private theorem map_insertAt {α β : Type} (f : α → β) (xs : List α) (i : 
     (insertAt xs i x).map f = insertAt (xs.map f) i (f x) := by
   simp [insertAt, List.map_take, List.map_drop]
 
-private theorem insertionPosition_cons (b : Nat × Nat) (l : List (Nat × Nat)) (it : Nat × Nat) :
+theorem insertionPosition_cons (b : Nat × Nat) (l : List (Nat × Nat)) (it : Nat × Nat) :
     insertionPosition (b :: l) it =
       (if b.2 < it.2 then 1 else 0) + insertionPosition l it := by
   unfold insertionPosition
@@ -210,7 +210,7 @@ private theorem mix_div_mod (a size pos : Nat) (hpos : pos < size) :
   rw [e, Nat.add_mul_div_right _ _ hsize, Nat.add_mul_mod_self_right]
   exact ⟨by rw [Nat.div_eq_of_lt hpos]; simp, Nat.mod_eq_of_lt hpos⟩
 
-private theorem encodeIntegerFrom_ne_nil (bias k q : Nat) : encodeIntegerFrom bias k q ≠ [] := by
+theorem encodeIntegerFrom_ne_nil (bias k q : Nat) : encodeIntegerFrom bias k q ≠ [] := by
   rw [encodeIntegerFrom]
   split <;> simp
 
@@ -229,7 +229,7 @@ private theorem decodeLoop_step (f : Nat) (c : Char) (cs : List Char) (n i bias 
   · intro h
     cases h
 
-private def PlanOk (plan : List (Nat × Nat)) : Prop :=
+def PlanOk (plan : List (Nat × Nat)) : Prop :=
   plan.Pairwise (fun a b => a.2 ≠ b.2 ∧ (a.1 < b.1 ∨ (a.1 = b.1 ∧ a.2 < b.2)))
 
 private def Inv (cur : List (Nat × Nat)) (n i : Nat) (plan : List (Nat × Nat)) : Prop :=
@@ -247,7 +247,7 @@ private theorem take_insertAt (cur : List (Nat × Nat)) (it : Nat × Nat) (pos :
   rw [h1, List.take_of_length_le (by omega)]
   simp
 
-private theorem length_insertAt {α : Type} (xs : List α) (i : Nat) (x : α) :
+theorem length_insertAt {α : Type} (xs : List α) (i : Nat) (x : α) :
     (insertAt xs i x).length = xs.length + 1 := by
   rw [(insertAt_perm xs i x).length_eq]; simp
 
@@ -361,31 +361,31 @@ private theorem finalList_facts : ∀ (plan cur : List (Nat × Nat)),
       (insertAt_perm _ _ _).append_right rest
     exact h1.trans (by simpa using (List.perm_middle (a := it) (l₁ := cur) (l₂ := rest)).symm)
 
-private theorem eq_of_sortedIdx_perm {l₁ l₂ : List (Nat × Nat)} (h₁ : SortedIdx l₁) (h₂ : SortedIdx l₂)
+theorem eq_of_sortedIdx_perm {l₁ l₂ : List (Nat × Nat)} (h₁ : SortedIdx l₁) (h₂ : SortedIdx l₂)
     (hp : l₁.Perm l₂) : l₁ = l₂ := by
   unfold SortedIdx at h₁ h₂
   exact List.Perm.eq_of_pairwise (le := fun (a b : Nat × Nat) => a.2 < b.2)
     (fun a b _ _ hab hba => by omega) h₁ h₂ hp
 
-private theorem sortedIdx_zipIdx (T : List Nat) : SortedIdx T.zipIdx := by
+theorem sortedIdx_zipIdx (T : List Nat) : SortedIdx T.zipIdx := by
   unfold SortedIdx
   have h := List.pairwise_lt_range' (s := 0) (n := T.length)
   rw [← List.zipIdx_map_snd 0 T] at h
   exact List.pairwise_map.mp h
 
-private theorem itemLe_trans : ∀ a b c : Nat × Nat, itemLe a b → itemLe b c → itemLe a c := by
+theorem itemLe_trans : ∀ a b c : Nat × Nat, itemLe a b → itemLe b c → itemLe a c := by
   intro a b c h1 h2
   unfold itemLe at *
   simp at *
   omega
 
-private theorem itemLe_total : ∀ a b : Nat × Nat, (itemLe a b || itemLe b a) = true := by
+theorem itemLe_total : ∀ a b : Nat × Nat, (itemLe a b || itemLe b a) = true := by
   intro a b
   unfold itemLe
   simp
   omega
 
-private theorem basic_plan_perm (T : List Nat) : (basicItems T ++ planOf T).Perm T.zipIdx := by
+theorem basic_plan_perm (T : List Nat) : (basicItems T ++ planOf T).Perm T.zipIdx := by
   unfold basicItems planOf
   have h1 := List.mergeSort_perm (T.zipIdx.filter (fun x => decide (128 ≤ x.1))) (fun a b => itemLe a b)
   have h2 := List.filter_append_perm (fun (x : Nat × Nat) => decide (x.1 < 128)) T.zipIdx
@@ -399,7 +399,7 @@ private theorem basic_plan_perm (T : List Nat) : (basicItems T ++ planOf T).Perm
   rw [h3] at h2
   exact (h1.append_left _).trans h2
 
-private theorem planOf_ok (T : List Nat) : PlanOk (planOf T) := by
+theorem planOf_ok (T : List Nat) : PlanOk (planOf T) := by
   unfold PlanOk
   have hsorted := List.pairwise_mergeSort (le := fun a b => itemLe a b) itemLe_trans itemLe_total
     (T.zipIdx.filter (fun x => decide (128 ≤ x.1)))
