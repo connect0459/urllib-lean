@@ -1,0 +1,34 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=2048"]
+
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.23.3
+    hooks:
+      - id: markdownlint-cli2
+        language_version: lts
+        args: ["--fix"]
+
+  - repo: local
+    hooks:
+      - id: lake-build
+        name: Lean Build (warnings as errors)
+        entry: lake build --wfail
+        language: system
+        files: '\.lean$|^lakefile\.toml$|^lean-toolchain$'
+        pass_filenames: false
+      - id: lake-test
+        name: Lean Test
+        entry: lake test
+        language: system
+        files: '\.lean$|^lakefile\.toml$|^lean-toolchain$'
+        pass_filenames: false
