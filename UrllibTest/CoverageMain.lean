@@ -5,6 +5,7 @@ import UrllibTest.PercentEncoding
 import UrllibTest.Host
 import UrllibTest.Host.Ipv4
 import UrllibTest.Host.Ipv6
+import UrllibTest.FormUrlencoded
 
 def report (name : String) (failures : List String) : IO Nat := do
   IO.println s!"{name}: {failures.length} failures"
@@ -34,4 +35,7 @@ def main : IO UInt32 := do
   total := total + (← report "host ipv6" (UrllibTest.Host.parseFailures UrllibTest.Host.ipv6Cases))
   total := total + (← report "host opaque" (UrllibTest.Host.parseFailures UrllibTest.Host.opaqueCases))
   total := total + (← report "host checks" (UrllibTest.failedChecks UrllibTest.Host.guardChecks))
+  total := total + (← report "form-urlencoded parse" UrllibTest.FormUrlencoded.parseFailures)
+  total := total + (← report "form-urlencoded serialize" UrllibTest.FormUrlencoded.serializeFailures)
+  total := total + (← report "form-urlencoded checks" (UrllibTest.failedChecks UrllibTest.FormUrlencoded.guardChecks))
   return if total = 0 then 0 else 1

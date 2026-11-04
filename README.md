@@ -13,6 +13,7 @@ This library is a Lean counterpart of [connect0459/urllib](https://github.com/co
 | :--- | :--- |
 | `Urllib.Punycode` | `encode : String → String`, `decode : String → Except DecodeError String` |
 | `Urllib.PercentEncoding` | `EncodeSet`, `utf8PercentEncode`, `percentEncodeBytes`, `percentDecode`, `utf8DecodeWithoutBom`, `utf8DecodeWithoutBomOrFail` |
+| `Urllib.FormUrlencoded` | `parse : String → Pairs`, `parseBytes`, `serialize : Pairs → String` |
 | `Urllib.Host` | `Host`, `Host.parse (input : String) (isOpaque : Bool)`, `Host.serialize`, `Host.Ipv4`, `Host.Ipv6` |
 
 Domain handling does not implement UTS #46: non-ASCII domains are rejected with `Host.Error.nonAsciiDomain`, ASCII domains are lowercased, and `xn--` labels pass through unchanged.
@@ -56,6 +57,9 @@ open Urllib
   (PercentEncoding.percentDecodeString "%E3%81%82%20b")  -- "あ b"
 #eval PercentEncoding.percentEncodeBytes .path (ByteArray.mk #[0x61, 0x20, 0xFF])  -- "a%20%FF"
 #eval PercentEncoding.utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xFF])  -- none
+
+#eval FormUrlencoded.parse "a=b+c&d=%41"        -- [("a", "b c"), ("d", "A")]
+#eval FormUrlencoded.serialize [("a b", "c&d")] -- "a+b=c%26d"
 
 #eval Host.parse "EXAMPLE.com" false           -- Except.ok (Host.domain "example.com")
 #eval (Host.parse "0x7f.1" false).map Host.serialize     -- Except.ok "127.0.0.1"
