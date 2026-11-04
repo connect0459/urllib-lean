@@ -79,7 +79,18 @@ def guardChecks : List UrllibTest.Check := [
   { name := "rejects an integer that needs a continuation with the truncated error", holds := decodeError "9" == some .truncated },
   { name := "rejects a truncated integer after a delimiter", holds := decodeError "ab-9" == some .truncated },
   { name := "rejects a non-ASCII character before the delimiter", holds := decodeError "ü-tda" == some .nonBasicCodePoint },
-  { name := "rejects a delta that leaves the Unicode range", holds := decodeError "99999999a" == some .invalidCodePoint }
+  { name := "rejects a delta that leaves the Unicode range", holds := decodeError "99999999a" == some .invalidCodePoint },
+  { name := "decodes uppercase digits like lowercase digits", holds := decoded "Mnchen-3YA" == some "München" },
+  { name := "rejects a character just above the decimal digits", holds := decodeError ":" == some .invalidDigit },
+  { name := "rejects a character between the decimal digits and the uppercase letters", holds := decodeError "@" == some .invalidDigit },
+  { name := "rejects a character between the uppercase and lowercase letters", holds := decodeError "[" == some .invalidDigit },
+  { name := "rejects a character above the lowercase letters", holds := decodeError "{" == some .invalidDigit },
+  { name := "rejects a delta that lands on the first surrogate", holds := decodeError "ib9b" == some .invalidCodePoint },
+  { name := "rejects a delta that lands on the last surrogate", holds := decodeError "zy0c" == some .invalidCodePoint },
+  { name := "rejects the first value above the Unicode range", holds := decodeError "en32g" == some .invalidCodePoint },
+  { name := "accepts the last value below the surrogates", holds := decoded "hb9b" == some (String.singleton (Char.ofNat 0xD7FF)) },
+  { name := "accepts the first value above the surrogates", holds := decoded "0y0c" == some (String.singleton (Char.ofNat 0xE000)) },
+  { name := "fails when the input outlasts the fuel", holds := match decodeLoop 0 ['a'] 128 0 72 [] with | .error .truncated => true | _ => false }
 ]
 
 /-- info: [] -/

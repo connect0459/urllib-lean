@@ -39,7 +39,8 @@ def rfc3492Disagreements : List String :=
 #eval rfc3492Disagreements
 
 def guardChecks : List UrllibTest.Check := [
-  { name := "generates strings of the requested length", holds := (generate 5 9).length == 9 }
+  { name := "generates strings of the requested length", holds := (generate 5 9).length == 9 },
+  { name := "stops without a pass when no fuel is left", holds := (Reference.encodeLoop 0 [0x100] 0 { n := 128, delta := 0, bias := 72, handled := 0, output := ['x'] }).output == ['x'] }
 ]
 
 /-- info: [] -/

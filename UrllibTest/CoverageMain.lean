@@ -28,6 +28,7 @@ def main : IO UInt32 := do
   total := total + (← report "ipv4 ends in number" UrllibTest.Host.Ipv4.endsInNumberFailures)
   total := total + (← report "ipv4 checks" (UrllibTest.failedChecks UrllibTest.Host.Ipv4.guardChecks))
   total := total + (← report "ipv6 parse" UrllibTest.Host.Ipv6.parseFailures)
+  total := total + (← report "ipv6 checks" (UrllibTest.failedChecks UrllibTest.Host.Ipv6.guardChecks))
   total := total + (← report "host domain" (UrllibTest.Host.parseFailures UrllibTest.Host.domainCases))
   total := total + (← report "host ipv4" (UrllibTest.Host.parseFailures UrllibTest.Host.ipv4Cases))
   total := total + (← report "host ipv6" (UrllibTest.Host.parseFailures UrllibTest.Host.ipv6Cases))

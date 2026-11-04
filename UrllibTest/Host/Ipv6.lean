@@ -1,3 +1,4 @@
+import UrllibTest.Support
 import Urllib.Host.Ipv6
 
 namespace UrllibTest.Host.Ipv6
@@ -59,7 +60,8 @@ def parseCases : List ParseCase := [
   { name := "rejects an empty embedded IPv4 part", input := "::1..2.3", expected := .failure .ipv4InIpv6InvalidCodePoint },
   { name := "rejects a non-digit embedded IPv4 part", input := "::1.2.3.a", expected := .failure .ipv4InIpv6InvalidCodePoint },
   { name := "rejects a colon after an embedded IPv4 address", input := "::1.2.3.4:5", expected := .failure .ipv4InIpv6InvalidCodePoint },
-  { name := "rejects empty input", input := "", expected := .failure .tooFewPieces }
+  { name := "rejects empty input", input := "", expected := .failure .tooFewPieces },
+  { name := "rejects a trailing dot after an embedded IPv4 part", input := "::1.2.3.", expected := .failure .ipv4InIpv6InvalidCodePoint }
 ]
 
 def parseFailures : List String :=
@@ -77,5 +79,28 @@ def zeroRunPattern (mask : Nat) : Ipv6 :=
 #guard_msgs in
 #eval (List.range 256).filter fun mask =>
   (Ipv6.parse (zeroRunPattern mask).serialize).toOption != some (zeroRunPattern mask)
+
+def guardChecks : List UrllibTest.Check := [
+  { name := "reads no digits as zero when the next character is not a digit",
+    holds := match Ipv6.readDecimalPiece none ['x'] with
+      | .ok (piece, rest) => piece == 0 && rest == ['x']
+      | .error _ => false },
+  { name := "reads no digits as zero at the end of input",
+    holds := match Ipv6.readDecimalPiece none [] with
+      | .ok (piece, rest) => piece == 0 && rest.isEmpty
+      | .error _ => false },
+  { name := "fails when the input outlasts the fuel of the piece loop",
+    holds := match Ipv6.parseLoop 0 {} ['1'] with
+      | .error .invalidCodePoint => true
+      | _ => false },
+  { name := "fails when the embedded IPv4 input outlasts the fuel",
+    holds := match Ipv6.readIpv4Parts 0 {} 0 ['1'] with
+      | .error .ipv4InIpv6InvalidCodePoint => true
+      | _ => false }
+]
+
+/-- info: [] -/
+#guard_msgs in
+#eval UrllibTest.failedChecks guardChecks
 
 end UrllibTest.Host.Ipv6

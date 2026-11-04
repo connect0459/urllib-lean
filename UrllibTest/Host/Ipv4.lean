@@ -76,7 +76,9 @@ def endsInNumberCases : List NumberCase := [
   { name := "a lone dot does not end in a number", input := ".", expected := false },
   { name := "an empty host does not end in a number", input := "", expected := false },
   { name := "a bare hexadecimal prefix ends in a number", input := "0x", expected := true },
-  { name := "an octal-looking label ends in a number", input := "x.017", expected := true }
+  { name := "an octal-looking label ends in a number", input := "x.017", expected := true },
+  { name := "a label made of a hyphen does not end in a number", input := "example.-", expected := false },
+  { name := "a label that starts below the digits does not end in a number", input := "example.-1", expected := false }
 ]
 
 def endsInNumberFailures : List String :=

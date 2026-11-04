@@ -67,7 +67,19 @@ def encodeCases : List EncodeCase := [
   { name := "component set keeps exclamation mark", set := .component, input := "!", expected := "!" },
   { name := "component set keeps hyphen, dot, underscore and tilde", set := .component, input := "-._~", expected := "-._~" },
   { name := "component set encodes only members of a mixed string", set := .component, input := "a b&c", expected := "a%20b%26c" },
-  { name := "empty string stays empty", set := .component, input := "", expected := "" }
+  { name := "empty string stays empty", set := .component, input := "", expected := "" },
+  { name := "fragment set encodes a C0 control", set := .fragment, input := String.singleton (Char.ofNat 1), expected := "%01" },
+  { name := "fragment set encodes a non-ASCII code point", set := .fragment, input := "é", expected := "%C3%A9" },
+  { name := "query set encodes a C0 control", set := .query, input := String.singleton (Char.ofNat 1), expected := "%01" },
+  { name := "query set encodes a non-ASCII code point", set := .query, input := "é", expected := "%C3%A9" },
+  { name := "special-query set encodes a C0 control", set := .specialQuery, input := String.singleton (Char.ofNat 1), expected := "%01" },
+  { name := "special-query set encodes a non-ASCII code point", set := .specialQuery, input := "é", expected := "%C3%A9" },
+  { name := "path set encodes a C0 control", set := .path, input := String.singleton (Char.ofNat 1), expected := "%01" },
+  { name := "path set encodes a non-ASCII code point", set := .path, input := "é", expected := "%C3%A9" },
+  { name := "userinfo set encodes a C0 control", set := .userinfo, input := String.singleton (Char.ofNat 1), expected := "%01" },
+  { name := "userinfo set encodes a non-ASCII code point", set := .userinfo, input := "é", expected := "%C3%A9" },
+  { name := "component set encodes a C0 control", set := .component, input := String.singleton (Char.ofNat 1), expected := "%01" },
+  { name := "component set encodes a non-ASCII code point", set := .component, input := "é", expected := "%C3%A9" }
 ]
 
 def encodeFailures : List String :=
@@ -131,7 +143,12 @@ def utf8Cases : List Utf8Case := [
   { name := "replaces a truncated four-byte sequence at the end of input", bytes := [0xF0, 0x9F, 0x98], expected := [0xFFFD] },
   { name := "replaces a lone continuation byte", bytes := [0x80], expected := [0xFFFD] },
   { name := "replaces a lone two-byte lead", bytes := [0xC3], expected := [0xFFFD] },
-  { name := "decodes empty input", bytes := [], expected := [] }
+  { name := "decodes empty input", bytes := [], expected := [] },
+  { name := "replaces a lone three-byte lead", bytes := [0xEF], expected := [0xFFFD] },
+  { name := "keeps the byte after a lone three-byte lead", bytes := [0xEF, 0x41], expected := [0xFFFD, 0x41] },
+  { name := "replaces a three-byte lead with one continuation at the end of input", bytes := [0xEF, 0xBB], expected := [0xFFFD] },
+  { name := "keeps the byte after a three-byte lead with one continuation", bytes := [0xEF, 0xBB, 0x41], expected := [0xFFFD, 0x41] },
+  { name := "strips a byte order mark and keeps the following text", bytes := [0xEF, 0xBB, 0xBF, 0x41], expected := [0x41] }
 ]
 
 def utf8Failures : List String :=
@@ -150,7 +167,10 @@ def guardChecks : List UrllibTest.Check := [
   { name := "decodes an escape of uppercase hexadecimal digits", holds := (percentDecode (ByteArray.mk #[0x25, 0x46, 0x46])).toList == [0xFF] },
   { name := "escapes the zero byte", holds := percentEncodeByte 0x00 == "%00" },
   { name := "escapes the largest byte", holds := percentEncodeByte 0xFF == "%FF" },
-  { name := "escapes a letter byte with uppercase digits", holds := percentEncodeByte 0x7A == "%7A" }
+  { name := "escapes a letter byte with uppercase digits", holds := percentEncodeByte 0x7A == "%7A" },
+  { name := "keeps a code point outside the set", holds := utf8PercentEncodeCodePoint .path 'a' == "a" },
+  { name := "escapes a code point inside the set", holds := utf8PercentEncodeCodePoint .path ' ' == "%20" },
+  { name := "escapes every byte of a multi-byte code point", holds := utf8PercentEncodeCodePoint .path 'é' == "%C3%A9" }
 ]
 
 /-- info: [] -/
