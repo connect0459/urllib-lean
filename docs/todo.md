@@ -92,7 +92,7 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 - [x] **Host serializer** — IPv4 dotted form, IPv6 with the longest zero run compressed
 - [x] **Proof: IPv4 round trip** — `Ipv4.parse a.serialize = .ok a` for every address (`Ipv4.parse_serialize`)
 - [x] **Proof: IPv6 round trip** — `Ipv6.parse a.serialize = .ok a` for every address (`Ipv6.parse_serialize`); it holds for any compression point at a zero piece, so the longest-run choice is covered by tests only
-- [ ] **Proof: serialization idempotence** — `serialize (parse (serialize h)) = serialize h`; follows from the round-trip proofs for IP hosts
+- [x] **Proof: serialization idempotence** — if `Host.parse input isOpaque = .ok h`, then `Host.parse (Host.serialize h) isOpaque = .ok h` (`Host.parse_serialize_of_parse`), hence `serialize (parse (serialize h)) = serialize h`; IPv4 and IPv6 hosts also re-parse to themselves for every address
 
 ---
 
