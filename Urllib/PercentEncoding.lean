@@ -56,6 +56,14 @@ def EncodeSet.contains : EncodeSet → Char → Bool
   | .userinfo => inUserinfoSet
   | .component => inComponentSet
 
+/-- Every percent-encode set. -/
+def EncodeSet.all : List EncodeSet :=
+  [.c0Control, .fragment, .query, .specialQuery, .path, .userinfo, .component]
+
+/-- Membership of a byte in the given percent-encode set; every byte above `0x7F` is a member. -/
+def EncodeSet.containsByte (set : EncodeSet) (b : UInt8) : Bool :=
+  decide (0x7F < b.toNat) || set.contains (Char.ofNat b.toNat)
+
 /-- The uppercase hexadecimal digit for `n`, which must be below 16. -/
 def hexDigit (n : Nat) : Char :=
   if n < 10 then Char.ofNat (0x30 + n) else Char.ofNat (0x41 + n - 10)
@@ -82,6 +90,11 @@ def utf8PercentEncodeCodePoint (set : EncodeSet) (c : Char) : String :=
 /-- UTF-8 percent-encodes every code point of a string with respect to a set. -/
 def utf8PercentEncode (set : EncodeSet) (input : String) : String :=
   String.ofList (input.toList.flatMap (utf8PercentEncodeCodePointChars set))
+
+/-- Percent-encodes a byte sequence: a byte inside the set becomes an escape, any other byte is kept as the ASCII character it denotes. -/
+def percentEncodeBytes (set : EncodeSet) (bytes : ByteArray) : String :=
+  String.ofList (bytes.data.toList.flatMap fun b =>
+    if set.containsByte b then percentEncodeByteChars b else [Char.ofNat b.toNat])
 
 /-- The value of an ASCII hexadecimal digit byte in either letter case; `none` for any other byte. -/
 def hexValue? (b : UInt8) : Option Nat :=
@@ -169,5 +182,13 @@ def utf8DecodeWithoutBom (bytes : ByteArray) : String :=
     | 0xEF :: 0xBB :: 0xBF :: rest => rest
     | all => all
   String.ofList (decodeUtf8Loop {} withoutBom []).reverse
+
+/-- UTF-8 decodes the bytes, ignoring a leading byte order mark; `none` when the bytes are not well-formed UTF-8. -/
+def utf8DecodeWithoutBomOrFail (bytes : ByteArray) : Option String :=
+  let withoutBom :=
+    match bytes.data.toList with
+    | 0xEF :: 0xBB :: 0xBF :: rest => rest
+    | all => all
+  String.fromUTF8? (ByteArray.mk withoutBom.toArray)
 
 end Urllib.PercentEncoding

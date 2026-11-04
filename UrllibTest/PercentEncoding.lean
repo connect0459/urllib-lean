@@ -170,7 +170,23 @@ def guardChecks : List UrllibTest.Check := [
   { name := "escapes a letter byte with uppercase digits", holds := percentEncodeByte 0x7A == "%7A" },
   { name := "keeps a code point outside the set", holds := utf8PercentEncodeCodePoint .path 'a' == "a" },
   { name := "escapes a code point inside the set", holds := utf8PercentEncodeCodePoint .path ' ' == "%20" },
-  { name := "escapes every byte of a multi-byte code point", holds := utf8PercentEncodeCodePoint .path 'é' == "%C3%A9" }
+  { name := "escapes every byte of a multi-byte code point", holds := utf8PercentEncodeCodePoint .path 'é' == "%C3%A9" },
+  { name := "percent-encodes a byte outside the set as itself", holds := percentEncodeBytes .path (ByteArray.mk #[0x61]) == "a" },
+  { name := "percent-encodes a byte inside the set", holds := percentEncodeBytes .path (ByteArray.mk #[0x20]) == "%20" },
+  { name := "percent-encodes a non-ASCII byte in every set", holds := EncodeSet.all.all fun set => percentEncodeBytes set (ByteArray.mk #[0x80]) == "%80" },
+  { name := "percent-encodes bytes that are not valid UTF-8", holds := percentEncodeBytes .c0Control (ByteArray.mk #[0x41, 0xFF, 0xC0]) == "A%FF%C0" },
+  { name := "percent-encodes the empty byte sequence to the empty string", holds := percentEncodeBytes .path ByteArray.empty == "" },
+  { name := "percent-encodes the UTF-8 bytes of a string like the string encoder", holds := ["", "a b", "é<あ>", "x\u0000y", String.singleton (Char.ofNat 0x1F600)].all fun s => EncodeSet.all.all fun set => percentEncodeBytes set s.toUTF8 == utf8PercentEncode set s },
+  { name := "strictly decodes valid UTF-8", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xE3, 0x81, 0x82]) == some "あ" },
+  { name := "strictly decodes the empty byte sequence", holds := utf8DecodeWithoutBomOrFail ByteArray.empty == some "" },
+  { name := "strict decoding strips one leading byte order mark", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xEF, 0xBB, 0xBF, 0x41]) == some "A" },
+  { name := "strict decoding keeps an encoded U+FFFD", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xEF, 0xBF, 0xBD]) == some (String.singleton (Char.ofNat 0xFFFD)) },
+  { name := "strict decoding fails on a truncated sequence", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xE3, 0x81]) == none },
+  { name := "strict decoding fails on an overlong encoding", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xC0, 0x80]) == none },
+  { name := "strict decoding fails on a surrogate encoding", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xED, 0xA0, 0x80]) == none },
+  { name := "strict decoding fails on a code point above U+10FFFF", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xF4, 0x90, 0x80, 0x80]) == none },
+  { name := "strict decoding fails on a lone continuation byte", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0x80]) == none },
+  { name := "strict decoding agrees with replacement decoding on every valid case", holds := utf8Cases.all fun c => match utf8DecodeWithoutBomOrFail (ByteArray.mk c.bytes.toArray) with | some text => text == utf8DecodeWithoutBom (ByteArray.mk c.bytes.toArray) | none => c.expected.contains 0xFFFD }
 ]
 
 /-- info: [] -/
