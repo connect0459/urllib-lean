@@ -65,46 +65,32 @@ decreasing_by
   unfold base
   exact Nat.lt_of_le_of_lt (Nat.div_le_self _ _) (by omega)
 
-structure EncoderState where
-  n : Nat
-  delta : Nat
-  bias : Nat
-  handled : Nat
-  output : List Char
+def insertAt {α : Type} (xs : List α) (i : Nat) (x : α) : List α :=
+  xs.take i ++ x :: xs.drop i
 
-def encodeCodePoint (basicCount : Nat) (st : EncoderState) (c : Nat) : EncoderState :=
-  if c < st.n then
-    { st with delta := st.delta + 1 }
-  else if c = st.n then
-    { st with
-      delta := 0
-      bias := adapt st.delta (st.handled + 1) (st.handled == basicCount)
-      handled := st.handled + 1
-      output := st.output ++ encodeIntegerFrom st.bias base st.delta }
-  else
-    st
+def insertionPosition (current : List (Nat × Nat)) (item : Nat × Nat) : Nat :=
+  (current.filter (fun x => decide (x.2 < item.2))).length
 
-def encodeStep (basicCount : Nat) (codePoints : List Nat) (st : EncoderState) : EncoderState :=
-  let m := (codePoints.filter (· ≥ st.n)).foldl min 0x110000
-  let st := { st with delta := st.delta + (m - st.n) * (st.handled + 1), n := m }
-  let st := codePoints.foldl (encodeCodePoint basicCount) st
-  { st with delta := st.delta + 1, n := st.n + 1 }
+def itemLe (a b : Nat × Nat) : Bool :=
+  decide (a.1 < b.1 ∨ (a.1 = b.1 ∧ a.2 ≤ b.2))
 
-def encodeLoop (basicCount : Nat) (codePoints : List Nat) : Nat → EncoderState → EncoderState
-  | 0, st => st
-  | fuel + 1, st =>
-    if st.handled < codePoints.length then
-      encodeLoop basicCount codePoints fuel (encodeStep basicCount codePoints st)
-    else
-      st
+def encodeInsertions : List (Nat × Nat) → Nat → Nat → Nat → List (Nat × Nat) → List Char
+  | _, _, _, _, [] => []
+  | current, n, i, bias, item :: rest =>
+    let size := current.length + 1
+    let position := insertionPosition current item
+    let delta := (item.1 - n) * size + position - i
+    encodeIntegerFrom bias base delta ++
+      encodeInsertions (insertAt current position item) item.1 (position + 1)
+        (adapt delta size (i == 0)) rest
 
 def encode (input : String) : String :=
-  let codePoints := input.toList.map Char.toNat
-  let basic := input.toList.filter (·.toNat < 128)
-  let basicPrefix := if basic.isEmpty then [] else basic ++ [delimiter]
-  let initial : EncoderState :=
-    { n := initialN, delta := 0, bias := initialBias, handled := basic.length, output := basicPrefix }
-  String.ofList (encodeLoop basic.length codePoints (codePoints.length + 1) initial).output
+  let items := (input.toList.map Char.toNat).zipIdx
+  let basic := items.filter (fun x => decide (x.1 < 128))
+  let plan := (items.filter (fun x => decide (128 ≤ x.1))).mergeSort (fun a b => itemLe a b)
+  let basicPrefix :=
+    if basic.isEmpty then [] else basic.map (fun x => Char.ofNat x.1) ++ [delimiter]
+  String.ofList (basicPrefix ++ encodeInsertions basic initialN 0 initialBias plan)
 
 def decodeInteger (bias : Nat) : List Char → Nat → Nat → Nat → Except DecodeError (Nat × List Char)
   | [], _, _, _ => .error .truncated
@@ -116,9 +102,6 @@ def decodeInteger (bias : Nat) : List Char → Nat → Nat → Nat → Except De
       let t := threshold k bias
       if digit < t then .ok (i, rest)
       else decodeInteger bias rest i (w * (base - t)) (k + base)
-
-def insertAt {α : Type} (xs : List α) (i : Nat) (x : α) : List α :=
-  xs.take i ++ x :: xs.drop i
 
 def decodeLoop (fuel : Nat) (chars : List Char) (n i bias : Nat) (output : List Nat) :
     Except DecodeError (List Nat) :=

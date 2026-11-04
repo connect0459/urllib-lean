@@ -45,56 +45,32 @@ private theorem encodeIntegerFrom_ascii (bias : Nat) : ∀ q k, AllAscii (encode
       · unfold base
         exact Nat.lt_of_le_of_lt (Nat.div_le_self _ _) (by omega)
 
-private theorem encodeCodePoint_ascii (basicCount : Nat) (st : EncoderState) (c : Nat)
-    (h : AllAscii st.output) : AllAscii (encodeCodePoint basicCount st c).output := by
-  unfold encodeCodePoint
-  split
-  · exact h
-  · split
-    · exact allAscii_append h (encodeIntegerFrom_ascii _ _ _)
-    · exact h
+private theorem encodeInsertions_ascii : ∀ (plan current : List (Nat × Nat)) (n i bias : Nat),
+    AllAscii (encodeInsertions current n i bias plan)
+  | [], _, _, _, _ => allAscii_nil
+  | item :: rest, current, n, i, bias => by
+    unfold encodeInsertions
+    exact allAscii_append (encodeIntegerFrom_ascii _ _ _) (encodeInsertions_ascii rest _ _ _ _)
 
-private theorem foldl_encodeCodePoint_ascii (basicCount : Nat) (codePoints : List Nat) :
-    ∀ st : EncoderState, AllAscii st.output →
-      AllAscii (codePoints.foldl (encodeCodePoint basicCount) st).output := by
-  induction codePoints with
-  | nil => intro st h; exact h
-  | cons c cs ih => intro st h; exact ih _ (encodeCodePoint_ascii basicCount st c h)
-
-private theorem encodeStep_ascii (basicCount : Nat) (codePoints : List Nat) (st : EncoderState)
-    (h : AllAscii st.output) : AllAscii (encodeStep basicCount codePoints st).output := by
-  unfold encodeStep
-  exact foldl_encodeCodePoint_ascii basicCount codePoints _ h
-
-private theorem encodeLoop_ascii (basicCount : Nat) (codePoints : List Nat) :
-    ∀ fuel (st : EncoderState), AllAscii st.output →
-      AllAscii (encodeLoop basicCount codePoints fuel st).output := by
-  intro fuel
-  induction fuel with
-  | zero => intro st h; exact h
-  | succ n ih =>
-    intro st h
-    unfold encodeLoop
-    split
-    · exact ih _ (encodeStep_ascii basicCount codePoints st h)
-    · exact h
+private theorem ofNat_ascii : ∀ n, n < 128 → (Char.ofNat n).toNat < 128 := by
+  decide
 
 theorem encode_isAscii (input : String) : IsAscii (encode input) := by
   unfold IsAscii encode
   rw [String.toList_ofList]
-  apply encodeLoop_ascii
-  show AllAscii (if (input.toList.filter (·.toNat < 128)).isEmpty then []
-    else (input.toList.filter (·.toNat < 128)) ++ [delimiter])
-  split
-  · exact allAscii_nil
-  · apply allAscii_append
-    · intro c hc
-      have := (List.mem_filter.mp hc).2
-      simpa using this
-    · intro c hc
-      cases hc with
-      | head => decide
-      | tail _ h => cases h
+  apply allAscii_append
+  · split
+    · exact allAscii_nil
+    · apply allAscii_append
+      · intro c hc
+        obtain ⟨x, hx, rfl⟩ := List.mem_map.mp hc
+        have := (List.mem_filter.mp hx).2
+        exact ofNat_ascii x.1 (by simpa using this)
+      · intro c hc
+        cases hc with
+        | head => decide
+        | tail _ h => cases h
+  · exact encodeInsertions_ascii _ _ _ _ _
 
 private theorem charToDigit_digitToChar : ∀ d, d < 36 → charToDigit? (digitToChar d) = some d := by
   decide
