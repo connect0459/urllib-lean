@@ -79,7 +79,7 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 - [x] **Percent-decode** — byte sequence and string variants; UTF-8 decode without BOM (replacement decoding, checked against an independent decoder)
 - [x] **Proof: single-byte escape round trip** — decoding `%XX` yields the original byte for all 256 bytes (`decodeBytes_percentEncodeByte`)
 - [x] **Proof: decode after encode** — `percentDecode (utf8PercentEncode set s).toUTF8 = s.toUTF8` when `%` is in the set or absent from `s` (`percentDecode_utf8PercentEncode`); for the component set it holds for every input; for the other sets a literal `%41` decodes to `A`, so the unconditional statement is false
-- [ ] **Proof: encoded output** — output contains only bytes outside the set, `%`-escapes, or unchanged members of the set's complement
+- [x] **Proof: encoded output** — the output of `utf8PercentEncode` is `WellEncoded`: a sequence of characters outside the set, kept as is, and `%XX` escapes of single bytes (`utf8PercentEncode_wellEncoded`); an escape is a percent sign followed by two uppercase hexadecimal digits (`percentEncodeByteChars_form`, `hexDigit_upper_hex`)
 
 ### Host parsing (WHATWG URL Standard, section 3)
 
