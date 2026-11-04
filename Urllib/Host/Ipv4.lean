@@ -23,21 +23,28 @@ def digitValue? (radix : Nat) (c : Char) : Option Nat :=
 def numberIn (radix : Nat) (digits : List Char) : Option Nat :=
   digits.foldlM (fun acc c => (digitValue? radix c).map (acc * radix + ·)) 0
 
-def parseNumber? (input : String) : Option Nat :=
-  match input.toList with
+def parseNumber? (input : List Char) : Option Nat :=
+  match input with
   | [] => none
   | '0' :: x :: rest =>
     if x = 'x' ∨ x = 'X' then numberIn 16 rest else numberIn 8 (x :: rest)
   | digits => numberIn 10 digits
 
-def splitParts (input : String) : List String :=
-  let parts := input.splitOn "."
+def splitDots : List Char → List (List Char)
+  | [] => [[]]
+  | c :: rest =>
+    match splitDots rest with
+    | part :: more => if c = '.' then [] :: part :: more else (c :: part) :: more
+    | [] => [[]]
+
+def splitParts (chars : List Char) : List (List Char) :=
+  let parts := splitDots chars
   match parts.getLast? with
-  | some "" => if parts.length > 1 then parts.dropLast else parts
+  | some [] => if parts.length > 1 then parts.dropLast else parts
   | _ => parts
 
-def parse (input : String) : Except Ipv4Error Ipv4 := do
-  let parts := splitParts input
+def parseChars (chars : List Char) : Except Ipv4Error Ipv4 := do
+  let parts := splitParts chars
   if parts.length > 4 then throw .tooManyParts
   let numbers ←
     match parts.mapM parseNumber? with
@@ -52,15 +59,22 @@ def parse (input : String) : Except Ipv4Error Ipv4 := do
     let value := leading.zipIdx.foldl (fun acc (n, i) => acc + n * 256 ^ (3 - i)) last
     return ⟨UInt32.ofNat value⟩
 
-def serialize (address : Ipv4) : String :=
-  let n := address.value.toNat
-  String.intercalate "." ([n / 2 ^ 24 % 256, n / 2 ^ 16 % 256, n / 2 ^ 8 % 256, n % 256].map toString)
+def parse (input : String) : Except Ipv4Error Ipv4 :=
+  parseChars input.toList
 
-def lastLabelIsNumber (label : String) : Bool :=
+def serializeChars (address : Ipv4) : List Char :=
+  let n := address.value.toNat
+  let part (k : Nat) : List Char := Nat.toDigits 10 (n / 2 ^ k % 256)
+  part 24 ++ '.' :: (part 16 ++ '.' :: (part 8 ++ '.' :: part 0))
+
+def serialize (address : Ipv4) : String :=
+  String.ofList (serializeChars address)
+
+def lastLabelIsNumber (label : List Char) : Bool :=
   (!label.isEmpty && label.all Char.isDigit) || (parseNumber? label).isSome
 
 def endsInNumber (input : String) : Bool :=
-  let parts := input.splitOn "."
+  let parts := splitDots input.toList
   match parts.getLast? with
   | none => false
   | some last =>
