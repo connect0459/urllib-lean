@@ -31,6 +31,7 @@ pre-commit run --all-files
 | `lake build` | Build the library |
 | `lake build --wfail` | Build and fail on any warning (as CI does) |
 | `lake test` | Build and run the test library |
+| `just coverage` | Measure test coverage (see [docs/coverage.md](docs/coverage.md)) |
 | `just verify` | Run the full CI-equivalent check locally |
 
 Before opening a pull request, run the full verification suite:
