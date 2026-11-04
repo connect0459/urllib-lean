@@ -43,17 +43,23 @@ def EncodeSet.contains : EncodeSet → Char → Bool
 def hexDigit (n : Nat) : Char :=
   if n < 10 then Char.ofNat (0x30 + n) else Char.ofNat (0x41 + n - 10)
 
+def percentEncodeByteChars (b : UInt8) : List Char :=
+  ['%', hexDigit (b.toNat / 16), hexDigit (b.toNat % 16)]
+
 def percentEncodeByte (b : UInt8) : String :=
-  String.ofList ['%', hexDigit (b.toNat / 16), hexDigit (b.toNat % 16)]
+  String.ofList (percentEncodeByteChars b)
+
+def utf8PercentEncodeCodePointChars (set : EncodeSet) (c : Char) : List Char :=
+  if set.contains c then
+    (String.singleton c).toUTF8.data.toList.flatMap percentEncodeByteChars
+  else
+    [c]
 
 def utf8PercentEncodeCodePoint (set : EncodeSet) (c : Char) : String :=
-  if set.contains c then
-    String.join ((String.singleton c).toUTF8.data.toList.map percentEncodeByte)
-  else
-    String.singleton c
+  String.ofList (utf8PercentEncodeCodePointChars set c)
 
 def utf8PercentEncode (set : EncodeSet) (input : String) : String :=
-  input.foldl (fun acc c => acc ++ utf8PercentEncodeCodePoint set c) ""
+  String.ofList (input.toList.flatMap (utf8PercentEncodeCodePointChars set))
 
 def hexValue? (b : UInt8) : Option Nat :=
   if 0x30 ≤ b.toNat ∧ b.toNat ≤ 0x39 then some (b.toNat - 0x30)
