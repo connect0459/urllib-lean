@@ -1,6 +1,6 @@
 # todo - urllib-lean
 
-Current state: **M1 (Punycode) and M2 (percent-encoding, host parsing) implemented and tested; round-trip proofs for Punycode, percent-encoding, IPv4, and IPv6 open**  
+Current state: **M1 (Punycode) and M2 (percent-encoding, host parsing) implemented and tested; round trips proved for Punycode, IPv4, and IPv6; the percent-encoding decode-after-encode proof is open**  
 Target: **v0.1.0 = M1 (Punycode, RFC 3492, with a machine-checked round-trip property) + M2 (percent-encoding and host parsing)**
 
 Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Pattern Standard. See the milestone table in `README.md`.
@@ -51,8 +51,9 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 
 - [x] **Output is ASCII** — every code point of `encode s` is below 128 (`encode_isAscii`)
 - [x] **Variable-length integer round trip** — `decodeInteger` inverts `encodeIntegerFrom` (`decodeInteger_encodeIntegerFrom`)
-- [ ] **Round trip** — `decode (encode s) = .ok s` for every input accepted by `encode`
-- [ ] **Basic code points preserved** — the prefix before the delimiter equals the basic code points of the input
+- [x] **Round trip** — `decode (encode s) = .ok s` for every string (`Punycode.decode_encode`); `encode` is stated through an insertion plan (non-basic code points sorted by value and position), which produces the same output as the RFC scanning algorithm
+- [ ] **Basic code points preserved** — the prefix before the delimiter equals the basic code points of the input (implied by the round trip, but not stated as its own theorem)
+- [ ] **Scanning encoder equals the plan-based encoder** — `Reference.encode = encode` is checked by differential tests on the RFC samples and 3000 generated strings, not proved
 - [x] **No `sorry` / `axiom`** — only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`) are used
 
 ### Refactor
