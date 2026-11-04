@@ -47,33 +47,41 @@ Coverage is measured on the generated C, not on the Lean source, so the numbers 
 | regions | C code regions executed at least once (close to statement coverage, C0) |
 | branch arms | taken arms of C conditions (close to branch coverage, C1) |
 
-Two kinds of code are left out so that the numbers reflect what a test can reach:
+Three kinds of code are left out of the denominators so that the numbers reflect what a test can
+reach. The report prints how many regions and arms each exclusion removed, so none of them is hidden:
 
 - **Compiler-generated helpers**: boxed wrappers, constructor eliminators, derived instances
   (`Repr`, `DecidableEq`, enum conversions), constant initializers, equation-lemma splitters, and
   wrappers that only forward to an `___redArg` variant.
 - **Object reuse paths**: branches that test whether an object is shared before reusing it
   (`isShared`, `reuseFailAlloc`, `resetjp`, `reusejp`). They depend on reference counts, not on the
-  behavior under test. The report prints how many regions and arms were excluded, so the exclusion
-  stays visible.
+  behavior under test.
+- **Arms that are unreachable by construction**, listed with a reason in
+  `scripts/coverage_accepted.json`: for example, `splitDots` never returns the empty list, so the
+  `none` arm of `getLast?` after it cannot run, and the compiler sometimes tests again a condition
+  that the enclosing branch has already decided. An entry allows at most the listed number of
+  uncovered regions and arms in that function; anything beyond that counts as a gap, and the report
+  warns about entries that no longer apply.
 
 Branches inside big-number arithmetic live in `lean.h` and are not part of the library files.
 
 ## Findings
 
-State on 2026-11-04, after adding the run-time driver:
+State on 2026-11-04, after closing the test gaps:
 
 | Measure | Result |
 | :--- | :--- |
-| functions | 99.0% (102 of 103) |
-| regions | 98.0% (1204 of 1228) |
-| branch arms | 94.5% (450 of 476) |
-| excluded object reuse paths | 99 regions, 190 arms |
+| functions | 100% (103 of 103) |
+| regions | 100% (1243 of 1243) |
+| branch arms | 100% (469 of 469) |
+| accepted as unreachable by construction | 7 regions, 7 arms |
+| excluded object reuse paths | 77 regions, 190 arms |
 
-The report found real test gaps, for example uppercase letters `A`–`Z` as Punycode digits and
-characters above `9` after the digit range are never decoded, a BOM prefix that is only partly
-present is never decoded, and `utf8PercentEncodeCodePoint` is never called. The remaining gaps are
-tracked in `docs/todo.md`.
+The first measurement (98.0% regions, 94.5% branch arms) found real test gaps: uppercase letters
+`A`–`Z` and characters above `9` or `z` as Punycode digits, surrogate and out-of-range deltas, partial
+BOM prefixes, control characters and non-ASCII code points for every encode set,
+`utf8PercentEncodeCodePoint`, a trailing dot after an embedded IPv4 part, and the fuel-exhausted paths
+of the loops. Each is now a named case in the test tables.
 
 ## Adding tests
 
