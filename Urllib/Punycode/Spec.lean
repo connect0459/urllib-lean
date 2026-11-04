@@ -655,4 +655,39 @@ theorem basic_chars (s : String) :
         have h3 : ∀ c : Char, Char.ofNat c.toNat = c := Char.ofNat_toNat
         simp only [Function.comp_def, h3, List.map_id']
 
+theorem encode_basic_prefix (s : String) :
+    ∃ ext : List Char, (∀ c ∈ ext, c ≠ '-') ∧
+      (encode s).toList =
+        (if (s.toList.filter (fun c => decide (c.toNat < 128))).isEmpty then []
+          else s.toList.filter (fun c => decide (c.toNat < 128)) ++ ['-']) ++ ext := by
+  refine ⟨encodeInsertions (basicItems (s.toList.map Char.toNat)) initialN 0 initialBias
+    (planOf (s.toList.map Char.toNat)), encodeInsertions_ne_dash _ _ _ _ _, ?_⟩
+  unfold encode
+  rw [String.toList_ofList, ← basic_chars s]
+  have hemp : ((basicItems (s.toList.map Char.toNat)).map (fun x => Char.ofNat x.1)).isEmpty =
+      (basicItems (s.toList.map Char.toNat)).isEmpty := by simp
+  rw [hemp]
+  simp [delimiter]
+
+theorem encode_basic_prefix_of_nonempty (s : String)
+    (h : (s.toList.filter (fun c => decide (c.toNat < 128))) ≠ []) :
+    ∃ ext : List Char, (∀ c ∈ ext, c ≠ '-') ∧
+      (encode s).toList = s.toList.filter (fun c => decide (c.toNat < 128)) ++ '-' :: ext := by
+  obtain ⟨ext, hext, he⟩ := encode_basic_prefix s
+  refine ⟨ext, hext, ?_⟩
+  have hne : (s.toList.filter (fun c => decide (c.toNat < 128))).isEmpty = false := by
+    cases hb : s.toList.filter (fun c => decide (c.toNat < 128)) with
+    | nil => exact absurd hb h
+    | cons c cs => rfl
+  rw [he]
+  simp [hne]
+
+theorem encode_no_delimiter_of_no_basic (s : String)
+    (h : s.toList.filter (fun c => decide (c.toNat < 128)) = []) :
+    ∀ c ∈ (encode s).toList, c ≠ '-' := by
+  obtain ⟨ext, hext, he⟩ := encode_basic_prefix s
+  rw [he]
+  simp only [h, List.isEmpty_nil, ite_true, List.nil_append]
+  exact hext
+
 end Urllib.Punycode
