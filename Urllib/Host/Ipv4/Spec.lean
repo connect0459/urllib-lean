@@ -97,4 +97,49 @@ theorem parse_serialize (a : Ipv4) : parse a.serialize = .ok a := by
     omega
   rw [hsum, UInt32.ofNat_toNat]
 
+private theorem digits_all_digit : ∀ b, b < 256 → ∀ c ∈ Nat.toDigits 10 b, c.isDigit = true := by
+  decide +kernel
+
+theorem serializeChars_digit_or_dot (a : Ipv4) : ∀ c ∈ serializeChars a, c.isDigit = true ∨ c = '.' := by
+  intro c hc
+  unfold serializeChars at hc
+  simp only [List.mem_append, List.mem_cons] at hc
+  have hn : ∀ k, a.value.toNat / 2 ^ k % 256 < 256 := fun k => Nat.mod_lt _ (by omega)
+  rcases hc with hc | rfl | hc | rfl | hc | rfl | hc
+  · exact Or.inl (digits_all_digit _ (hn 24) c hc)
+  · exact Or.inr rfl
+  · exact Or.inl (digits_all_digit _ (hn 16) c hc)
+  · exact Or.inr rfl
+  · exact Or.inl (digits_all_digit _ (hn 8) c hc)
+  · exact Or.inr rfl
+  · exact Or.inl (digits_all_digit _ (hn 0) c hc)
+
+private theorem endsInNumber_digits (b1 b2 b3 b4 : Nat)
+    (h1 : b1 < 256) (h2 : b2 < 256) (h3 : b3 < 256) (h4 : b4 < 256) :
+    endsInNumber (String.ofList (Nat.toDigits 10 b1 ++ '.' :: (Nat.toDigits 10 b2 ++ '.' ::
+        (Nat.toDigits 10 b3 ++ '.' :: Nat.toDigits 10 b4)))) = true := by
+  have hparts : splitDots (Nat.toDigits 10 b1 ++ '.' :: (Nat.toDigits 10 b2 ++ '.' ::
+        (Nat.toDigits 10 b3 ++ '.' :: Nat.toDigits 10 b4))) =
+      [Nat.toDigits 10 b1, Nat.toDigits 10 b2, Nat.toDigits 10 b3, Nat.toDigits 10 b4] := by
+    rw [splitDots_append _ _ (digits_no_dot b1 h1), splitDots_append _ _ (digits_no_dot b2 h2),
+      splitDots_append _ _ (digits_no_dot b3 h3), splitDots_no_dot _ (digits_no_dot b4 h4)]
+  have hall : (Nat.toDigits 10 b4).all Char.isDigit = true := by
+    rw [List.all_eq_true]
+    intro c hc
+    exact digits_all_digit b4 h4 c hc
+  have hne : (Nat.toDigits 10 b4).isEmpty = false := by
+    cases hd : Nat.toDigits 10 b4 with
+    | nil => exact absurd hd (digits_ne_nil b4 h4)
+    | cons c cs => rfl
+  unfold endsInNumber
+  rw [String.toList_ofList, hparts]
+  simp [List.getLast?_cons, hne, lastLabelIsNumber, hall]
+
+theorem endsInNumber_serialize (a : Ipv4) : endsInNumber a.serialize = true := by
+  have hn : a.value.toNat < 4294967296 := a.value.toNat_lt_size
+  unfold serialize serializeChars
+  exact endsInNumber_digits (a.value.toNat / 2 ^ 24 % 256) (a.value.toNat / 2 ^ 16 % 256)
+    (a.value.toNat / 2 ^ 8 % 256) (a.value.toNat / 2 ^ 0 % 256)
+    (by omega) (by omega) (by omega) (by omega)
+
 end Urllib.Host.Ipv4
