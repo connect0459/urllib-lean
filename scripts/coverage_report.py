@@ -8,6 +8,7 @@ and tests cannot target them. Everything else in the library is measured.
 import argparse
 import collections
 import json
+import os
 import re
 import sys
 
@@ -52,6 +53,10 @@ def main():
     with open(args.export_json, encoding="utf-8") as handle:
         functions = json.load(handle)["data"][0]["functions"]
 
+    accepted_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "coverage_accepted.json")
+    with open(accepted_path, encoding="utf-8") as handle:
+        accepted = json.load(handle)
+    accepted_used = collections.Counter()
     names = {function["name"] for function in functions}
     stats = collections.defaultdict(lambda: collections.Counter())
     missed = []
@@ -86,6 +91,17 @@ def main():
             counter["branch_arms"] += 2
             counter["branch_arms_hit"] += (1 if branch[4] > 0 else 0) + (1 if branch[5] > 0 else 0)
             uncovered_arms += (1 if branch[4] == 0 else 0) + (1 if branch[5] == 0 else 0)
+        allowance = accepted.get(function["name"])
+        if allowance:
+            regions_accepted = min(allowance["regions"], len(uncovered_regions))
+            arms_accepted = min(allowance["arms"], uncovered_arms)
+            counter["regions"] -= regions_accepted
+            counter["branch_arms"] -= arms_accepted
+            accepted_used["regions"] += regions_accepted
+            accepted_used["arms"] += arms_accepted
+            accepted_used[function["name"]] += 1
+            uncovered_regions = uncovered_regions[regions_accepted:]
+            uncovered_arms -= arms_accepted
         if args.show_uncovered:
             for region in uncovered_regions:
                 text = region_text(filename, region).strip().split("\n")[0][:100]
@@ -116,6 +132,11 @@ def main():
           f"{total['regions_hit']:>6}/{total['regions']:<5}{region_percent:>5.1f}%"
           f"{total['branch_arms_hit']:>6}/{total['branch_arms']:<5}{branch_percent:>5.1f}%")
 
+    print(f"accepted as unreachable by construction: {accepted_used['regions']} regions, "
+          f"{accepted_used['arms']} branch arms")
+    for name in accepted:
+        if not accepted_used[name]:
+            print(f"warning: stale accepted entry {name}", file=sys.stderr)
     print(f"excluded as runtime memory reuse: {total['memory_regions_excluded']} uncovered regions, "
           f"{total['memory_arms_excluded']} branch arms")
 

@@ -1,0 +1,32 @@
+{
+  "lp_Urllib_Urllib_Host_Ipv4_splitParts": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "splitDots never returns the empty list (Ipv4.splitDots_ne_nil), so getLast? is never none"
+  },
+  "lp_Urllib_Urllib_Host_Ipv4_parseChars": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the parts list is never empty, so getLast? is never none"
+  },
+  "lp_Urllib_Urllib_Host_Ipv4_endsInNumber": {
+    "regions": 2,
+    "arms": 2,
+    "reason": "splitDots never returns the empty list, and a list of length above one keeps a last part after dropLast, so getLast? is never none"
+  },
+  "lp_Urllib_List_foldlM___at___00Urllib_Host_Ipv4_numberIn_spec__0": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the compiler tests again an option that the enclosing branch has just matched as none"
+  },
+  "lp_Urllib_Urllib_Host_Ipv6_printFrom": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the compiler tests again a condition that the enclosing branch has already decided"
+  },
+  "lp_Urllib_Urllib_Host_Ipv6_readIpv4Parts": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the first equation handles the empty list, so the compiler's second test of the list never fails"
+  }
+}
