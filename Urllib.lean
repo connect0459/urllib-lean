@@ -1,5 +1,6 @@
 import Urllib.Punycode
 import Urllib.Punycode.Spec
+import Urllib.Punycode.Reference.Spec
 import Urllib.PercentEncoding
 import Urllib.PercentEncoding.Spec
 import Urllib.Host
