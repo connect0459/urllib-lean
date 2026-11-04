@@ -1,6 +1,6 @@
 # todo - urllib-lean
 
-Current state: **M1 (Punycode) and M2 (percent-encoding, host parsing) implemented and tested; round trips proved for Punycode, IPv4, and IPv6; the percent-encoding decode-after-encode proof is open**  
+Current state: **M1 (Punycode) and M2 (percent-encoding, host parsing) implemented and tested; round trips proved for Punycode, percent-encoding, IPv4, and IPv6**  
 Target: **v0.1.0 = M1 (Punycode, RFC 3492, with a machine-checked round-trip property) + M2 (percent-encoding and host parsing)**
 
 Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Pattern Standard. See the milestone table in `README.md`.
@@ -78,7 +78,7 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 - [x] **UTF-8 percent-encode** — code point and string variants
 - [x] **Percent-decode** — byte sequence and string variants; UTF-8 decode without BOM (replacement decoding, checked against an independent decoder)
 - [x] **Proof: single-byte escape round trip** — decoding `%XX` yields the original byte for all 256 bytes (`decodeBytes_percentEncodeByte`)
-- [ ] **Proof: decode after encode** — `percentDecode (utf8PercentEncode set s).toUTF8 = s.toUTF8`, which holds only when `%` is in the set (component) or absent from `s`; for the other sets a literal `%41` decodes to `A`, so the unconditional statement is false
+- [x] **Proof: decode after encode** — `percentDecode (utf8PercentEncode set s).toUTF8 = s.toUTF8` when `%` is in the set or absent from `s` (`percentDecode_utf8PercentEncode`); for the component set it holds for every input; for the other sets a literal `%41` decodes to `A`, so the unconditional statement is false
 - [ ] **Proof: encoded output** — output contains only bytes outside the set, `%`-escapes, or unchanged members of the set's complement
 
 ### Host parsing (WHATWG URL Standard, section 3)
