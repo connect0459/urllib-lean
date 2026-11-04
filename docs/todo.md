@@ -89,7 +89,7 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 - [x] **Opaque host parser** — forbidden code point check and C0 percent-encoding
 - [x] **Domain host parser** — percent-decode, ASCII lowercase, forbidden code points, non-ASCII rejection per the decision above
 - [x] **Host serializer** — IPv4 dotted form, IPv6 with the longest zero run compressed
-- [ ] **Proof: IPv4 round trip** — `Ipv4.parse a.serialize = .ok a`; checked on 4096 samples, formal proof open
+- [x] **Proof: IPv4 round trip** — `Ipv4.parse a.serialize = .ok a` for every address (`Ipv4.parse_serialize`)
 - [ ] **Proof: IPv6 round trip** — `Ipv6.parse a.serialize = .ok a`; checked on all 256 zero-run patterns, formal proof open
 - [ ] **Proof: serialization idempotence** — `serialize (parse (serialize h)) = serialize h`; follows from the round-trip proofs for IP hosts
 
