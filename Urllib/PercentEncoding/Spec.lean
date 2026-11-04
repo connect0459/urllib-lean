@@ -229,10 +229,14 @@ theorem utf8DecodeWithoutBom_percentDecodeString_ascii (s : String)
   · rw [decodeUtf8Loop_ascii s.toList [] hascii]
     simp
 
+/-- The output shape of `utf8PercentEncode`: characters outside the set kept as is, and escapes of single bytes. -/
 inductive WellEncoded (set : EncodeSet) : List Char → Prop where
+  /-- The empty sequence is well encoded. -/
   | nil : WellEncoded set []
+  /-- A character outside the set may be kept as is. -/
   | raw (c : Char) (rest : List Char) :
       set.contains c = false → WellEncoded set rest → WellEncoded set (c :: rest)
+  /-- The escape of a single byte is well encoded. -/
   | escape (b : UInt8) (rest : List Char) :
       WellEncoded set rest → WellEncoded set (percentEncodeByteChars b ++ rest)
 

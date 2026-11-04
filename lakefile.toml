@@ -11,6 +11,7 @@ autoImplicit = false
 
 [[lean_lib]]
 name = "Urllib"
+leanOptions = {weak.linter.missingDocs = true}
 
 [[lean_lib]]
 name = "UrllibTest"

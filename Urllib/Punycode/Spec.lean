@@ -2,6 +2,7 @@ import Urllib.Punycode
 
 namespace Urllib.Punycode
 
+/-- Every code point of the string is below 128. -/
 def IsAscii (s : String) : Prop := ∀ c ∈ s.toList, c.toNat < 128
 
 private def AllAscii (cs : List Char) : Prop := ∀ c ∈ cs, c.toNat < 128
@@ -112,6 +113,7 @@ theorem decodeInteger_encodeIntegerFrom (bias : Nat) :
         ((q - threshold k bias) % (base - threshold k bias)) (base - threshold k bias)
         ((q - threshold k bias) / (base - threshold k bias)) q (by omega)
 
+/-- The original positions of the items are strictly increasing. -/
 def SortedIdx (l : List (Nat × Nat)) : Prop := l.Pairwise (fun a b => a.2 < b.2)
 
 theorem insertAt_perm {α : Type} (xs : List α) (i : Nat) (x : α) :
@@ -229,6 +231,7 @@ private theorem decodeLoop_step (f : Nat) (c : Char) (cs : List Char) (n i bias 
   · intro h
     cases h
 
+/-- An insertion plan is well formed when its items have distinct positions and are strictly ordered by code point, then by position. -/
 def PlanOk (plan : List (Nat × Nat)) : Prop :=
   plan.Pairwise (fun a b => a.2 ≠ b.2 ∧ (a.1 < b.1 ∨ (a.1 = b.1 ∧ a.2 < b.2)))
 
