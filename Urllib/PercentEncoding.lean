@@ -175,20 +175,12 @@ def decodeUtf8Loop : Utf8State → List UInt8 → List Char → List Char
     let (st', acc') := feed st b.toNat acc
     decodeUtf8Loop st' rest acc'
 
-/-- UTF-8 decodes the bytes, ignoring a leading byte order mark and replacing malformed sequences with U+FFFD. -/
+/-- UTF-8 decodes the bytes without byte order mark handling (a leading BOM decodes to U+FEFF), replacing malformed sequences with U+FFFD. -/
 def utf8DecodeWithoutBom (bytes : ByteArray) : String :=
-  let withoutBom :=
-    match bytes.data.toList with
-    | 0xEF :: 0xBB :: 0xBF :: rest => rest
-    | all => all
-  String.ofList (decodeUtf8Loop {} withoutBom []).reverse
+  String.ofList (decodeUtf8Loop {} bytes.data.toList []).reverse
 
-/-- UTF-8 decodes the bytes, ignoring a leading byte order mark; `none` when the bytes are not well-formed UTF-8. -/
+/-- UTF-8 decodes the bytes without byte order mark handling (a leading BOM decodes to U+FEFF); `none` when the bytes are not well-formed UTF-8. -/
 def utf8DecodeWithoutBomOrFail (bytes : ByteArray) : Option String :=
-  let withoutBom :=
-    match bytes.data.toList with
-    | 0xEF :: 0xBB :: 0xBF :: rest => rest
-    | all => all
-  String.fromUTF8? (ByteArray.mk withoutBom.toArray)
+  String.fromUTF8? bytes
 
 end Urllib.PercentEncoding

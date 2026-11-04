@@ -211,23 +211,8 @@ theorem utf8DecodeWithoutBom_percentDecodeString_ascii (s : String)
   have hascii : ∀ c ∈ s.toList, c.toNat < 128 := fun c hc => (h c hc).1
   unfold utf8DecodeWithoutBom
   rw [hdec]
-  dsimp only
-  have hnobom : ∀ rest, s.toList.flatMap String.utf8EncodeChar ≠ 0xEF :: 0xBB :: 0xBF :: rest := by
-    intro rest hr
-    cases hs : s.toList with
-    | nil => simp [hs] at hr
-    | cons c cs =>
-      rw [hs, List.flatMap_cons, utf8EncodeChar_ascii c (hascii c (by simp [hs]))] at hr
-      have := (List.cons.inj hr).1
-      have h2 := congrArg UInt8.toNat this
-      have h3 := hascii c (by simp [hs])
-      simp at h2
-      omega
-  split
-  · rename_i rest heq
-    exact absurd heq (hnobom rest)
-  · rw [decodeUtf8Loop_ascii s.toList [] hascii]
-    simp
+  rw [decodeUtf8Loop_ascii s.toList [] hascii]
+  simp
 
 /-- The output shape of `utf8PercentEncode`: characters outside the set kept as is, and escapes of single bytes. -/
 inductive WellEncoded (set : EncodeSet) : List Char → Prop where

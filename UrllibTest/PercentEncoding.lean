@@ -112,8 +112,8 @@ def decodeCases : List DecodeCase := [
   { name := "keeps empty input", input := "", expected := "" },
   { name := "replaces an incomplete sequence", input := "%C3", expected := String.singleton (Char.ofNat 0xFFFD) },
   { name := "replaces an invalid lead byte", input := "%FF", expected := String.singleton (Char.ofNat 0xFFFD) },
-  { name := "strips one leading byte order mark", input := "%EF%BB%BFabc", expected := "abc" },
-  { name := "strips only the first byte order mark", input := "%EF%BB%BF%EF%BB%BFabc", expected := String.singleton (Char.ofNat 0xFEFF) ++ "abc" }
+  { name := "keeps a leading byte order mark as U+FEFF", input := "%EF%BB%BFabc", expected := String.singleton (Char.ofNat 0xFEFF) ++ "abc" },
+  { name := "keeps every byte order mark as U+FEFF", input := "%EF%BB%BF%EF%BB%BFabc", expected := String.singleton (Char.ofNat 0xFEFF) ++ String.singleton (Char.ofNat 0xFEFF) ++ "abc" }
 ]
 
 def decodeFailures : List String :=
@@ -148,7 +148,7 @@ def utf8Cases : List Utf8Case := [
   { name := "keeps the byte after a lone three-byte lead", bytes := [0xEF, 0x41], expected := [0xFFFD, 0x41] },
   { name := "replaces a three-byte lead with one continuation at the end of input", bytes := [0xEF, 0xBB], expected := [0xFFFD] },
   { name := "keeps the byte after a three-byte lead with one continuation", bytes := [0xEF, 0xBB, 0x41], expected := [0xFFFD, 0x41] },
-  { name := "strips a byte order mark and keeps the following text", bytes := [0xEF, 0xBB, 0xBF, 0x41], expected := [0x41] }
+  { name := "keeps a byte order mark as U+FEFF before the following text", bytes := [0xEF, 0xBB, 0xBF, 0x41], expected := [0xFEFF, 0x41] }
 ]
 
 def utf8Failures : List String :=
@@ -179,7 +179,7 @@ def guardChecks : List UrllibTest.Check := [
   { name := "percent-encodes the UTF-8 bytes of a string like the string encoder", holds := ["", "a b", "é<あ>", "x\u0000y", String.singleton (Char.ofNat 0x1F600)].all fun s => EncodeSet.all.all fun set => percentEncodeBytes set s.toUTF8 == utf8PercentEncode set s },
   { name := "strictly decodes valid UTF-8", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xE3, 0x81, 0x82]) == some "あ" },
   { name := "strictly decodes the empty byte sequence", holds := utf8DecodeWithoutBomOrFail ByteArray.empty == some "" },
-  { name := "strict decoding strips one leading byte order mark", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xEF, 0xBB, 0xBF, 0x41]) == some "A" },
+  { name := "strict decoding keeps a leading byte order mark as U+FEFF", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xEF, 0xBB, 0xBF, 0x41]) == some (String.singleton (Char.ofNat 0xFEFF) ++ "A") },
   { name := "strict decoding keeps an encoded U+FFFD", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xEF, 0xBF, 0xBD]) == some (String.singleton (Char.ofNat 0xFFFD)) },
   { name := "strict decoding fails on a truncated sequence", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xE3, 0x81]) == none },
   { name := "strict decoding fails on an overlong encoding", holds := utf8DecodeWithoutBomOrFail (ByteArray.mk #[0xC0, 0x80]) == none },

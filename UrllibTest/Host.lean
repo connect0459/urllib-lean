@@ -30,6 +30,7 @@ def domainCases : List ParseCase := [
   { name := "rejects an empty domain", input := "", isOpaque := false, expected := .failure .emptyDomain },
   { name := "rejects a non-ASCII domain", input := "é.com", isOpaque := false, expected := .failure .nonAsciiDomain },
   { name := "rejects a percent-encoded non-ASCII domain", input := "%C3%A9.com", isOpaque := false, expected := .failure .nonAsciiDomain },
+  { name := "rejects a domain that starts with a percent-encoded byte order mark", input := "%EF%BB%BFexample.com", isOpaque := false, expected := .failure .nonAsciiDomain },
   { name := "rejects a percent-encoded invalid UTF-8 domain", input := "%FF.com", isOpaque := false, expected := .failure .nonAsciiDomain },
   { name := "rejects a space", input := "exa mple.org", isOpaque := false, expected := .failure .forbiddenDomainCodePoint },
   { name := "rejects a number sign", input := "a#b", isOpaque := false, expected := .failure .forbiddenDomainCodePoint },
