@@ -15,3 +15,7 @@ name = "Urllib"
 [[lean_lib]]
 name = "UrllibTest"
 globs = ["UrllibTest.+"]
+
+[[lean_exe]]
+name = "coverage"
+root = "UrllibTest.CoverageMain"
