@@ -16,6 +16,8 @@ inductive EncodeSet where
   | userinfo
   /-- The component percent-encode set. -/
   | component
+  /-- The `application/x-www-form-urlencoded` percent-encode set. -/
+  | formUrlencoded
   deriving Repr, DecidableEq
 
 /-- Membership in the C0 control percent-encode set: C0 controls and code points above `~`. -/
@@ -46,6 +48,10 @@ def inUserinfoSet (c : Char) : Bool :=
 def inComponentSet (c : Char) : Bool :=
   inUserinfoSet c || ('$'.toNat ≤ c.toNat && c.toNat ≤ '&'.toNat) || c == '+' || c == ','
 
+/-- Membership in the `application/x-www-form-urlencoded` percent-encode set: the component set and `!`, `'` to `)`, and `~`. -/
+def inFormUrlencodedSet (c : Char) : Bool :=
+  inComponentSet c || ['!', '\'', '(', ')', '~'].contains c
+
 /-- Membership of a code point in the given percent-encode set. -/
 def EncodeSet.contains : EncodeSet → Char → Bool
   | .c0Control => inC0ControlSet
@@ -55,10 +61,11 @@ def EncodeSet.contains : EncodeSet → Char → Bool
   | .path => inPathSet
   | .userinfo => inUserinfoSet
   | .component => inComponentSet
+  | .formUrlencoded => inFormUrlencodedSet
 
 /-- Every percent-encode set. -/
 def EncodeSet.all : List EncodeSet :=
-  [.c0Control, .fragment, .query, .specialQuery, .path, .userinfo, .component]
+  [.c0Control, .fragment, .query, .specialQuery, .path, .userinfo, .component, .formUrlencoded]
 
 /-- Membership of a byte in the given percent-encode set; every byte above `0x7F` is a member. -/
 def EncodeSet.containsByte (set : EncodeSet) (b : UInt8) : Bool :=
