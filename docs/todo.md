@@ -1,6 +1,6 @@
 # todo - urllib-lean
 
-Current state: **project scaffold only (no library code yet)**  
+Current state: **M1 implemented and tested (19 RFC 3492 samples); ASCII-output and integer round-trip proved; full round-trip proof open**  
 Target: **v0.1.0 = M1 (Punycode, RFC 3492, with a machine-checked round-trip property) + M2 (percent-encoding and host parsing)**
 
 Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Pattern Standard. See the milestone table in `README.md`.
@@ -18,7 +18,7 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 - [ ] **Create the GitHub repository and push** — `connect0459/urllib-lean`
 - [ ] **Verify the first CI run** — the `leanprover/lean-action` inputs (`build-args`, `test`, `lint`, `use-github-cache`) are unverified
 - [ ] **Remove `UrllibTest/.gitkeep`** — once the first test file exists
-- [ ] **Run `pre-commit install`** — via `just setup`
+- [x] **Run `pre-commit install`** — via `just setup`
 
 ---
 
@@ -26,32 +26,33 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 
 ### Decisions to make before implementation
 
-- [ ] **Coverage target** — agree on a target with the user before writing code
-- [ ] **Public API shape** — `encode` / `decode` over `String` (code points) with an error type, vs. `Array UInt32`
-- [ ] **Error model** — `Except PunycodeError` variants (overflow, invalid digit, invalid input)
-- [ ] **Dependency policy** — Lean core and `Std` only; no external packages
+- [ ] **Coverage target** — not yet agreed; implementation started with RFC samples, edge cases, and failure cases covering every decoder error variant
+- [x] **Public API shape** — `encode : String → String` (total) and `decode : String → Except DecodeError String`, both over code points
+- [x] **Error model** — `DecodeError`: `nonBasicCodePoint`, `invalidDigit`, `truncated`, `invalidCodePoint`; no `overflow` because `Nat` arithmetic cannot overflow, so an out-of-range result surfaces as `invalidCodePoint`
+- [x] **Dependency policy** — Lean core only; no external packages
 
 ### Red — specification as tests (`UrllibTest/Punycode.lean`)
 
-- [ ] **RFC 3492 section 7.1 sample strings** — all 19 samples (A–S) as `#guard` round-trip vectors
-- [ ] **Edge cases** — empty input, ASCII-only input (basic code points only, trailing delimiter), single non-ASCII code point
-- [ ] **Failure cases** — invalid digit, truncated input, integer overflow
+- [x] **RFC 3492 section 7.1 sample strings** — all 19 samples (A–S), cross-checked against an independent implementation, as encode and decode vectors
+- [x] **Edge cases** — empty input, ASCII-only input (trailing delimiter), single non-ASCII code point, supplementary-plane code point, delimiter-only input
+- [x] **Failure cases** — invalid digit, truncated input, non-basic code point before the delimiter, out-of-range code point
 
 ### Green — implementation (`Urllib/Punycode.lean`)
 
-- [ ] **Constants** — `base`, `tMin`, `tMax`, `skew`, `damp`, `initialBias`, `initialN`, delimiter
-- [ ] **Digit mapping** — `basicToDigit` / `digitToBasic`
-- [ ] **Bias adaptation** — `adapt`
-- [ ] **Encoder** — `encode`
-- [ ] **Decoder** — `decode`
-- [ ] **Totality** — no `partial` / `unsafe`; termination proved or structurally evident
+- [x] **Constants** — `base`, `tMin`, `tMax`, `skew`, `damp`, `initialBias`, `initialN`, delimiter
+- [x] **Digit mapping** — `charToDigit?` / `digitToChar`
+- [x] **Bias adaptation** — `adapt`
+- [x] **Encoder** — `encode`
+- [x] **Decoder** — `decode`
+- [x] **Totality** — no `partial` / `unsafe`; `adaptLoop` and `encodeIntegerFrom` terminate by proof, the two outer loops by fuel
 
 ### Proofs (`Urllib/Punycode/Spec.lean`)
 
-- [ ] **Output is ASCII** — every code point of `encode s` is below 128
+- [x] **Output is ASCII** — every code point of `encode s` is below 128 (`encode_isAscii`)
+- [x] **Variable-length integer round trip** — `decodeInteger` inverts `encodeIntegerFrom` (`decodeInteger_encodeIntegerFrom`)
 - [ ] **Round trip** — `decode (encode s) = .ok s` for every input accepted by `encode`
 - [ ] **Basic code points preserved** — the prefix before the delimiter equals the basic code points of the input
-- [ ] **No `sorry` / `axiom`** — checked by `lake build --wfail`; document any property deliberately left unproved
+- [x] **No `sorry` / `axiom`** — only the standard axioms (`propext`, `Classical.choice`, `Quot.sound`) are used
 
 ### Refactor
 
