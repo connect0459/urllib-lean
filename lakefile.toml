@@ -1,0 +1,17 @@
+name = "Urllib"
+version = "0.1.0"
+description = "A WHATWG-oriented URL library for Lean 4"
+license = "Apache-2.0"
+keywords = ["url", "whatwg", "punycode", "idna"]
+defaultTargets = ["Urllib"]
+testDriver = "UrllibTest"
+
+[leanOptions]
+autoImplicit = false
+
+[[lean_lib]]
+name = "Urllib"
+
+[[lean_lib]]
+name = "UrllibTest"
+globs = ["UrllibTest.+"]
