@@ -8,6 +8,9 @@ build:
 test:
     lake test
 
+coverage *args:
+    bash scripts/coverage.sh {{args}}
+
 verify:
     lake build --wfail
     lake test
