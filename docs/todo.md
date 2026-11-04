@@ -1,6 +1,6 @@
 # todo - urllib-lean
 
-Current state: **M1 (Punycode) and M2 (percent-encoding, host parsing) implemented and tested; round trips proved for Punycode, percent-encoding, IPv4, and IPv6**  
+Current state: **M1 (Punycode) and M2 (percent-encoding, host parsing) implemented and tested; all v0.1.0 proofs done; coverage measured**  
 Target: **v0.1.0 = M1 (Punycode, RFC 3492, with a machine-checked round-trip property) + M2 (percent-encoding and host parsing)**
 
 Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Pattern Standard. See the milestone table in `README.md`.
@@ -16,7 +16,9 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 - [x] **Quality gates** — pre-commit hooks (`lake build --wfail`, `lake test`, markdownlint), `justfile`
 - [x] **CI** — `.github/workflows/ci.yml`, dependabot
 - [ ] **Create the GitHub repository and push** — `connect0459/urllib-lean`
-- [ ] **Coverage measurement spike** — no Lean coverage tool exists (`jubnzv/Mutate.lean` offers mutation testing, a complementary measure of test strength, not C0/C1, and has no license); evaluate compiling the library with `--coverage` (gcov / llvm-cov on Lean's generated C) and running the test vectors from a `lean_exe` driver, because `#guard` runs in the elaborator and is not measured; until then, track branches by hand against the test matrix
+- [x] **Coverage measurement** — `just coverage` builds an instrumented copy with the system clang and summarizes the library on the generated C (see `docs/coverage.md`); the floor is met: functions 99.0%, regions 98.0%, branch arms 94.5%, with compiler-generated helpers and object reuse branches reported separately
+- [ ] **Close the remaining coverage gaps** — reach 100% where a test can: uppercase and out-of-range characters in `charToDigit?`, `decodeLoop` branches, partial BOM prefixes in `utf8DecodeWithoutBom`, `utf8PercentEncodeCodePoint` (never called), `inFragmentSet` / `inQuerySet`, and the uncovered branches of `Ipv4.endsInNumber` / `parseChars`, `Ipv6.parseLoop` / `readIpv4Parts` / `readDecimalPiece` / `printFrom`; list them with `just coverage --list-missed`
+- [ ] **Run the coverage script on Linux** — verified on macOS only; add a CI job once it runs there
 - [ ] **Verify the first CI run** — the `leanprover/lean-action` inputs (`build-args`, `test`, `lint`, `use-github-cache`) are unverified
 - [x] **Remove `UrllibTest/.gitkeep`** — once the first test file exists
 - [x] **Run `pre-commit install`** — via `just setup`
