@@ -1,9 +1,11 @@
 # todo - urllib-lean
 
-Current state: **M1 (Punycode) and M2 (percent-encoding, host parsing) implemented and tested; all v0.1.0 proofs done; coverage measured**  
-Target: **v0.1.0 = M1 (Punycode, RFC 3492, with a machine-checked round-trip property) + M2 (percent-encoding and host parsing)**
+Current state: **Punycode, percent-encoding, and host parsing are implemented, tested, and proved; coverage measured; the rest of the v0.1.0 scope is planned below**  
+Target: **v0.1.0 = feature parity with the MoonBit reference implementation's v0.1.0 (URL parser with WPT conformance, URLSearchParams, IDNA / UTS #46, URL Pattern), built on the completed Punycode, percent-encoding, and host foundations**
 
-Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Pattern Standard. See the milestone table in `README.md`.
+Milestone numbers (M1–M4) are retired: work is ordered by dependency (see "Remaining scope for v0.1.0"). The scope is frozen as of 2026-11-04; anything discovered later goes to a later release.
+
+Proofs are added incrementally: each remaining component is first specified by tests (WPT vectors where they exist), and machine-checked properties follow as separate steps. The proof scope per component is decided when that component starts.
 
 ---
 
@@ -15,7 +17,7 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 - [x] **Agent guide** — `AGENTS.md` (`CLAUDE.md` is a symlink)
 - [x] **Quality gates** — pre-commit hooks (`lake build --wfail`, `lake test`, markdownlint), `justfile`
 - [x] **CI** — `.github/workflows/ci.yml`, dependabot
-- [ ] **Create the GitHub repository and push** — `connect0459/urllib-lean`
+- [ ] **Create the GitHub repository and push** — `connect0459/urllib-lean`; do this before the release so that CI is verified early
 - [x] **Coverage measurement** — `just coverage` builds an instrumented copy with the system clang and summarizes the library on the generated C (see `docs/coverage.md`); the floor is met: functions 99.0%, regions 98.0%, branch arms 94.5%, with compiler-generated helpers and object reuse branches reported separately
 - [x] **Close the remaining coverage gaps** — functions, regions, and branch arms of the library are at 100% (see `docs/coverage.md`); 7 regions and 7 arms are accepted as unreachable by construction in `scripts/coverage_accepted.json`, each with a reason
 - [ ] **Run the coverage script on Linux** — verified on macOS only; add a CI job once it runs there
@@ -25,7 +27,7 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 
 ---
 
-## M1: Punycode (RFC 3492)
+## Done: Punycode (RFC 3492)
 
 ### Decisions to make before implementation
 
@@ -65,13 +67,13 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 
 ---
 
-## M2: Percent-encoding and host parsing
+## Done: Percent-encoding and host parsing
 
 ### Decisions to make before implementation
 
-- [x] **Domain handling without UTS #46** — full IDNA processing (mapping table, NFC, Bidi / Joiners) is out of scope for v0.1.0; non-ASCII domains are rejected with `nonAsciiDomain`, and ASCII domains are lowercased with `xn--` labels passed through unchanged (as in other existing implementations)
+- [x] **Domain handling without UTS #46** — full IDNA processing (mapping table, NFC, Bidi / Joiners) is deferred to the UTS #46 item below; until then non-ASCII domains are rejected with `nonAsciiDomain`, and ASCII domains are lowercased with `xn--` labels passed through unchanged (as in other existing implementations)
 - [x] **Module layout** — `Urllib.PercentEncoding` and `Urllib.Host` (with `Ipv4`, `Ipv6`, `OpaqueHost`); `Host` depends on `PercentEncoding` and `Punycode`, never the reverse
-- [x] **`Host` representation** — an inductive type (`domain`, `ipv4`, `ipv6`, `opaqueHost`, `empty`); invariants are established by `Host.parse`; smart constructors are deferred until the URL parser (M3) shows which invariants callers rely on
+- [x] **`Host` representation** — an inductive type (`domain`, `ipv4`, `ipv6`, `opaqueHost`, `empty`); invariants are established by `Host.parse`; smart constructors are deferred until the URL parser shows which invariants callers rely on
 
 ### Percent-encoding (WHATWG URL Standard, section 1.3)
 
@@ -85,7 +87,7 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 
 ### Host parsing (WHATWG URL Standard, section 3)
 
-- [x] **Red** — tests for each host kind (`UrllibTest/Host.lean`, `UrllibTest/Host/Ipv4.lean`, `UrllibTest/Host/Ipv6.lean`); WPT host vectors arrive with the URL parser in M3
+- [x] **Red** — tests for each host kind (`UrllibTest/Host.lean`, `UrllibTest/Host/Ipv4.lean`, `UrllibTest/Host/Ipv6.lean`); WPT host vectors arrive with the URL parser
 - [x] **Forbidden host / domain code points** — predicates
 - [x] **IPv4 parser** — number parsing (decimal / octal / hex), part-count rules, overflow, "ends in a number" checker
 - [x] **IPv6 parser** — compression, embedded IPv4, validation errors
@@ -100,7 +102,7 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 
 ## Gap analysis against the reference implementations
 
-Compared with existing URL implementations in other languages, restricted to the v0.1.0 scope (Punycode, percent-encoding, host parsing).
+Compared with existing URL implementations in other languages, restricted to the already implemented parts (Punycode, percent-encoding, host parsing).
 
 ### No gap
 
@@ -112,14 +114,30 @@ Compared with existing URL implementations in other languages, restricted to the
 ### Decided differences (no action)
 
 - **Extra forbidden domain code points in a reference implementation** — U+FFFD, noncharacters, U+00A0, and U+3000 are rejected after UTS #46 mapping; unreachable here because non-ASCII domains are rejected earlier (`nonAsciiDomain`)
-- **UTS #46 / `domain_to_unicode`** — out of scope for v0.1.0 (see the M2 decision)
+- **UTS #46 / `domain_to_unicode`** — not implemented yet; planned below (see the domain handling decision)
 
 ### Candidate gaps
 
 - [x] **Percent-encode a byte sequence** — `percentEncodeBytes` and `EncodeSet.containsByte`; agrees with `utf8PercentEncode` on the UTF-8 bytes of a string (checked by tests on every set; not proved)
 - [x] **Strict UTF-8 decode** — `utf8DecodeWithoutBomOrFail` returns `none` on malformed input (truncated, overlong, surrogate, above U+10FFFF, stray continuation)
 - [x] **`Host.empty` is never produced by `Host.parse`** — the opaque-host parser now returns `.empty` for empty input; `Host.parse_serialize_of_parse` covers it, and an empty domain stays an error (`emptyDomain`)
-- [ ] **Opaque-path trailing-space encoding** — deferred to M3: its behavior is defined by the URL parser's handling of `?` and `#` after an opaque path, so it cannot be specified or tested in isolation
+- [ ] **`application/x-www-form-urlencoded` parse / serialize** — found by comparing against the reference implementations; WHATWG URL Standard section 5.1; planned as the first item of the remaining scope
+- [ ] **Opaque-path trailing-space encoding** — deferred to the URL parser: its behavior is defined by the URL parser's handling of `?` and `#` after an opaque path, so it cannot be specified or tested in isolation
+
+---
+
+## Remaining scope for v0.1.0
+
+Ordered by dependency. Each item: Red (tests, WPT vectors verbatim where they exist) → Green → Refactor; proofs are added incrementally and recorded per item. Coverage targets are agreed with the user before each item starts.
+
+1. [ ] **form-urlencoded** (`Urllib.FormUrlencoded`) — parse / serialize per URL Standard section 5.1; depends on `PercentEncoding`; WPT `urlencoded-parser` vectors
+2. [ ] **URLSearchParams, standalone part** — list of name-value pairs with `append`, `delete`, `get`, `getAll`, `has`, `set`, `sort`, `toString`; the `sort` order must follow UTF-16 code units, which differs from code point order for supplementary-plane characters (decide the comparison before implementing); WPT `urlsearchparams-*` vectors
+3. [ ] **UTS #46 / IDNA** — mapping and status tables (pinned Unicode version, generated), NFC, Bidi and Joiner checks, `domainToAscii` / `domainToUnicode`; replaces the `nonAsciiDomain` rejection in `Host.parseDomain`; WPT `IdnaTestV2` vectors
+4. [ ] **URL parser** — state machine, URL record, serializer, getters; WPT `urltestdata` vectors; closes the opaque-path trailing-space gap above
+5. [ ] **URL setters and helpers** — setters, path utilities, file URL helpers, relative resolution
+6. [ ] **URLSearchParams / URL binding** — the update steps that tie a `URLSearchParams` to a URL's query
+7. [ ] **URL Pattern** — tokenizer, pattern parser, constructor-string parser, matching, `generate`, `compare_component`; WPT `urlpattern` vectors
+8. [ ] **Proofs** — added incrementally per component; candidates: form-urlencoded round trip, UTF-16 order of `sort`, serializer idempotence of the URL parser
 
 ---
 
@@ -127,7 +145,7 @@ Compared with existing URL implementations in other languages, restricted to the
 
 - [x] **README** — usage examples for `Urllib.Punycode`, `Urllib.PercentEncoding`, and `Urllib.Host`, API summary, statement of proved properties
 - [x] **Docs for public API** — doc-strings on every public declaration; `weak.linter.missingDocs` is enabled for `Urllib` in `lakefile.toml`
-- [x] **Milestone table** — mark M1 and M2 as done in `README.md`
+- [ ] **Status table** — keep the component table in `README.md` current as each item lands
 - [ ] **CHANGELOG** — create `CHANGELOG.md` with a `[0.1.0]` section (deferred until release time)
 - [ ] **Version** — confirm `version = "0.1.0"` in `lakefile.toml`
 - [ ] **Full verification** — `just verify` passes locally and CI is green on `main`
