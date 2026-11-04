@@ -69,14 +69,14 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 
 ### Decisions to make before implementation
 
-- [x] **Domain handling without UTS #46** — full IDNA processing (mapping table, NFC, Bidi / Joiners) is out of scope for v0.1.0; non-ASCII domains are rejected with `nonAsciiDomain`, and ASCII domains are lowercased with `xn--` labels passed through unchanged (as in the MoonBit `urllib`)
+- [x] **Domain handling without UTS #46** — full IDNA processing (mapping table, NFC, Bidi / Joiners) is out of scope for v0.1.0; non-ASCII domains are rejected with `nonAsciiDomain`, and ASCII domains are lowercased with `xn--` labels passed through unchanged (as in other existing implementations)
 - [x] **Module layout** — `Urllib.PercentEncoding` and `Urllib.Host` (with `Ipv4`, `Ipv6`, `OpaqueHost`); `Host` depends on `PercentEncoding` and `Punycode`, never the reverse
 - [x] **`Host` representation** — an inductive type (`domain`, `ipv4`, `ipv6`, `opaqueHost`, `empty`); invariants are established by `Host.parse`; smart constructors are deferred until the URL parser (M3) shows which invariants callers rely on
 
 ### Percent-encoding (WHATWG URL Standard, section 1.3)
 
 - [x] **Red** — tests for each percent-encode set, UTF-8 percent-encode, percent-decode, and the replacement behavior of UTF-8 decode (`UrllibTest/PercentEncoding.lean`)
-- [x] **Percent-encode sets** — C0 control, fragment, query, special-query, path, userinfo, component (cross-checked against the MoonBit `urllib` definitions; note the component set contains `%` through its `$`–`&` range)
+- [x] **Percent-encode sets** — C0 control, fragment, query, special-query, path, userinfo, component (cross-checked against existing implementations; note the component set contains `%` through its `$`–`&` range)
 - [x] **UTF-8 percent-encode** — code point and string variants
 - [x] **Percent-decode** — byte sequence and string variants; UTF-8 decode without BOM (replacement decoding, checked against an independent decoder)
 - [x] **Proof: single-byte escape round trip** — decoding `%XX` yields the original byte for all 256 bytes (`decodeBytes_percentEncodeByte`)
@@ -95,6 +95,31 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 - [x] **Proof: IPv4 round trip** — `Ipv4.parse a.serialize = .ok a` for every address (`Ipv4.parse_serialize`)
 - [x] **Proof: IPv6 round trip** — `Ipv6.parse a.serialize = .ok a` for every address (`Ipv6.parse_serialize`); it holds for any compression point at a zero piece, so the longest-run choice is covered by tests only
 - [x] **Proof: serialization idempotence** — if `Host.parse input isOpaque = .ok h`, then `Host.parse (Host.serialize h) isOpaque = .ok h` (`Host.parse_serialize_of_parse`), hence `serialize (parse (serialize h)) = serialize h`; IPv4 and IPv6 hosts also re-parse to themselves for every address
+
+---
+
+## Gap analysis against the reference implementations
+
+Compared with existing URL implementations in other languages, restricted to the v0.1.0 scope (Punycode, percent-encoding, host parsing).
+
+### No gap
+
+- **Punycode** — constants, `adapt`, digit mapping, encoder, decoder, and error cases match; the reference encode / decode entry points correspond to `decode` / `encode`
+- **Percent-encode sets** — fragment, query, special-query, path, and userinfo match the reference definitions; the component set is an addition
+- **Forbidden host code points** — the forbidden host set matches; the forbidden domain set follows the URL Standard (forbidden host + C0 controls + `%` + U+007F)
+- **IPv4 / IPv6 / opaque host** — same rules as the references, plus machine-checked round trips
+
+### Decided differences (no action)
+
+- **Extra forbidden domain code points in a reference implementation** — U+FFFD, noncharacters, U+00A0, and U+3000 are rejected after UTS #46 mapping; unreachable here because non-ASCII domains are rejected earlier (`nonAsciiDomain`)
+- **UTS #46 / `domain_to_unicode`** — out of scope for v0.1.0 (see the M2 decision)
+
+### Candidate gaps
+
+- [ ] **Percent-encode a byte sequence** — a byte-slice variant exists in the references; the URL Standard's "percent-encode after encoding" works on bytes, while only `String` / `Char` inputs exist here
+- [ ] **Strict UTF-8 decode** — a strict decoder exists in the references, and the Standard defines "UTF-8 decode without BOM or fail"; only the replacement (lossy) variant exists
+- [ ] **`Host.empty` is never produced by `Host.parse`** — a reference implementation returns an empty domain for an empty non-special host, and here the opaque parser returns `opaqueHost ""`; decide whether `parse` should return `.empty` and prove the idempotence theorem for it
+- [ ] **Opaque-path trailing-space encoding** — an opaque-path encoder that encodes a trailing space exists in the references; it is used by the URL parser (M3)
 
 ---
 
