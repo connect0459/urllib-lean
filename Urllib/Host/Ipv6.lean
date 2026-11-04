@@ -75,37 +75,55 @@ def readIpv4Parts : Nat → ParseState → Nat → List Char →
       else throw .ipv4InIpv6InvalidCodePoint
     | [] => throw .ipv4InIpv6InvalidCodePoint
 
-def parseLoop : Nat → ParseState → List Char → Except Ipv6Error ParseState
-  | _, st, [] => .ok st
-  | 0, _, _ => .error .invalidCodePoint
-  | fuel + 1, st, chars@(c :: rest) =>
+theorem readHex_length_le : ∀ budget acc len (cs : List Char),
+    (readHex budget acc len cs).2.2.length ≤ cs.length
+  | 0, _, _, _ => by simp [readHex]
+  | _ + 1, _, _, [] => by simp [readHex]
+  | budget + 1, acc, len, c :: rest => by
+    simp only [readHex]
+    split
+    · rename_i digit _
+      have := readHex_length_le budget (acc * 16 + digit) (len + 1) rest
+      simp only [List.length_cons]
+      omega
+    · simp
+
+def parseLoop (st : ParseState) (chars : List Char) : Except Ipv6Error ParseState :=
+  match chars with
+  | [] => .ok st
+  | c :: rest =>
     if st.pieceIndex = 8 then .error .tooManyPieces
     else if c = ':' then
       if st.compress.isSome then .error .multipleCompression
       else
-        parseLoop fuel
+        parseLoop
           { st with pieceIndex := st.pieceIndex + 1, compress := some (st.pieceIndex + 1) } rest
     else
-      let (value, length, afterHex) := readHex 4 0 0 chars
-      match afterHex with
-      | '.' :: _ =>
-        if length = 0 then .error .ipv4InIpv6InvalidCodePoint
-        else if st.pieceIndex > 6 then .error .ipv4InIpv6TooManyPieces
-        else do
-          let (st, seen) ← readIpv4Parts chars.length st 0 chars
-          if seen ≠ 4 then throw .ipv4InIpv6TooFewParts
-          return st
-      | ':' :: afterColon =>
-        if afterColon.isEmpty then .error .invalidCodePoint
-        else parseLoop fuel (st.setPiece value) afterColon
-      | [] => .ok (st.setPiece value)
-      | _ => .error .invalidCodePoint
+      match _hr : readHex 4 0 0 (c :: rest) with
+      | (value, length, afterHex) =>
+        match _h2 : afterHex with
+        | '.' :: _ =>
+          if length = 0 then .error .ipv4InIpv6InvalidCodePoint
+          else if st.pieceIndex > 6 then .error .ipv4InIpv6TooManyPieces
+          else do
+            let (st, seen) ← readIpv4Parts (c :: rest).length st 0 (c :: rest)
+            if seen ≠ 4 then throw .ipv4InIpv6TooFewParts
+            return st
+        | ':' :: afterColon =>
+          if afterColon.isEmpty then .error .invalidCodePoint
+          else parseLoop (st.setPiece value) afterColon
+        | [] => .ok (st.setPiece value)
+        | _ => .error .invalidCodePoint
+termination_by chars.length
+decreasing_by
+  all_goals simp_wf
+  have h := readHex_length_le 4 0 0 (c :: rest)
+  simp_all
+  omega
 
-def swapLoop (pieces : Array Nat) (compress : Nat) : Nat → Nat → Array Nat
-  | 0, _ => pieces
-  | _, 0 => pieces
-  | swaps + 1, pieceIndex + 1 =>
-    swapLoop (pieces.swapIfInBounds (pieceIndex + 1) (compress + swaps)) compress swaps pieceIndex
+def expandCompression (pieces : Array Nat) (compress swaps : Nat) : Array Nat :=
+  pieces.extract 0 compress ++ Array.replicate (8 - compress - swaps) 0 ++
+    pieces.extract compress (compress + swaps)
 
 def ofPieces (pieces : Array Nat) : Ipv6 :=
   ⟨Vector.ofFn fun i => UInt16.ofNat pieces[i.val]!⟩
@@ -119,40 +137,45 @@ def parse (input : String) : Except Ipv6Error Ipv6 := do
         pure ({ pieceIndex := 1, compress := some 1 : ParseState }, afterCompression)
       | _ => throw .invalidCompression
     | chars => pure ({}, chars)
-  let st ← parseLoop (chars.length + 1) st chars
+  let st ← parseLoop st chars
   match st.compress with
   | some compress =>
-    return ofPieces (swapLoop st.pieces compress (st.pieceIndex - compress) 7)
+    return ofPieces (expandCompression st.pieces compress (st.pieceIndex - compress))
   | none =>
     if st.pieceIndex ≠ 8 then throw .tooFewPieces
     return ofPieces st.pieces
 
+def findCompressLoop : List Nat → Nat → Nat → Nat → Nat → Nat → Nat × Nat
+  | [], _, _, _, bestStart, bestLength => (bestStart, bestLength)
+  | piece :: rest, index, runStart, runLength, bestStart, bestLength =>
+    if piece = 0 then
+      let runStart := if runLength = 0 then index else runStart
+      let runLength := runLength + 1
+      if runLength > bestLength then
+        findCompressLoop rest (index + 1) runStart runLength runStart runLength
+      else
+        findCompressLoop rest (index + 1) runStart runLength bestStart bestLength
+    else
+      findCompressLoop rest (index + 1) 0 0 bestStart bestLength
+
 def findCompress (pieces : List Nat) : Option Nat :=
-  let (_, _, bestStart, bestLength) :=
-    pieces.zipIdx.foldl
-      (fun (runStart, runLength, bestStart, bestLength) (piece, index) =>
-        if piece = 0 then
-          let runStart := if runLength = 0 then index else runStart
-          let runLength := runLength + 1
-          if runLength > bestLength then (runStart, runLength, runStart, runLength)
-          else (runStart, runLength, bestStart, bestLength)
-        else (0, 0, bestStart, bestLength))
-      (0, 0, 0, 0)
+  let (bestStart, bestLength) := findCompressLoop pieces 0 0 0 0 0
   if bestLength > 1 then some bestStart else none
+
+def printFrom (compress : Option Nat) : Nat → Bool → List Nat → List Char
+  | _, _, [] => []
+  | index, ignoreZeros, piece :: rest =>
+    if ignoreZeros && piece = 0 then
+      printFrom compress (index + 1) ignoreZeros rest
+    else if compress = some index then
+      (if index = 0 then [':', ':'] else [':']) ++ printFrom compress (index + 1) true rest
+    else
+      Nat.toDigits 16 piece ++ (if index ≠ 7 then [':'] else []) ++
+        printFrom compress (index + 1) false rest
 
 def serialize (address : Ipv6) : String :=
   let pieces := address.pieces.toList.map UInt16.toNat
-  let compress := findCompress pieces
-  let (output, _) :=
-    pieces.zipIdx.foldl
-      (fun (output, ignoreZeros) (piece, index) =>
-        if ignoreZeros && piece = 0 then (output, ignoreZeros)
-        else if compress = some index then
-          (output ++ (if index = 0 then "::" else ":"), true)
-        else
-          (output ++ String.ofList (Nat.toDigits 16 piece) ++ (if index ≠ 7 then ":" else ""), false))
-      ("", false)
-  output
+  String.ofList (printFrom (findCompress pieces) 0 false pieces)
 
 end Ipv6
 
