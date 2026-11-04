@@ -100,9 +100,9 @@ Later milestones (not in v0.1.0): M3 URL parser and WPT conformance, M4 URL Patt
 
 ## Release v0.1.0
 
-- [ ] **README** — usage examples for `Urllib.Punycode`, `Urllib.PercentEncoding`, and `Urllib.Host`, API summary, statement of proved properties, relationship to `ammkrn/lean-url`
-- [ ] **Docs for public API** — doc-strings on every public declaration
-- [ ] **Milestone table** — mark M1 and M2 as done in `README.md`
+- [x] **README** — usage examples for `Urllib.Punycode`, `Urllib.PercentEncoding`, and `Urllib.Host`, API summary, statement of proved properties
+- [x] **Docs for public API** — doc-strings on every public declaration; `weak.linter.missingDocs` is enabled for `Urllib` in `lakefile.toml`
+- [x] **Milestone table** — mark M1 and M2 as done in `README.md`
 - [ ] **CHANGELOG** — create `CHANGELOG.md` with a `[0.1.0]` section (deferred until release time)
 - [ ] **Version** — confirm `version = "0.1.0"` in `lakefile.toml`
 - [ ] **Full verification** — `just verify` passes locally and CI is green on `main`
