@@ -84,13 +84,18 @@ def encodeInsertions : List (Nat × Nat) → Nat → Nat → Nat → List (Nat �
       encodeInsertions (insertAt current position item) item.1 (position + 1)
         (adapt delta size (i == 0)) rest
 
+def basicItems (codePoints : List Nat) : List (Nat × Nat) :=
+  codePoints.zipIdx.filter (fun x => decide (x.1 < 128))
+
+def planOf (codePoints : List Nat) : List (Nat × Nat) :=
+  (codePoints.zipIdx.filter (fun x => decide (128 ≤ x.1))).mergeSort (fun a b => itemLe a b)
+
 def encode (input : String) : String :=
-  let items := (input.toList.map Char.toNat).zipIdx
-  let basic := items.filter (fun x => decide (x.1 < 128))
-  let plan := (items.filter (fun x => decide (128 ≤ x.1))).mergeSort (fun a b => itemLe a b)
+  let codePoints := input.toList.map Char.toNat
+  let basic := basicItems codePoints
   let basicPrefix :=
     if basic.isEmpty then [] else basic.map (fun x => Char.ofNat x.1) ++ [delimiter]
-  String.ofList (basicPrefix ++ encodeInsertions basic initialN 0 initialBias plan)
+  String.ofList (basicPrefix ++ encodeInsertions basic initialN 0 initialBias (planOf codePoints))
 
 def decodeInteger (bias : Nat) : List Char → Nat → Nat → Nat → Except DecodeError (Nat × List Char)
   | [], _, _, _ => .error .truncated
