@@ -163,10 +163,33 @@ private theorem flatMap_enc_id (L : List Char)
     rw [List.flatMap_cons, this, ih (fun x hx => h x (by simp [hx]))]
     rfl
 
-private theorem parse_serialize_opaque (input : List Char) (t : String)
+private theorem enc_ne_nil (c : Char) :
+    PercentEncoding.utf8PercentEncodeCodePointChars .c0Control c ≠ [] := by
+  unfold PercentEncoding.utf8PercentEncodeCodePointChars
+  split
+  · have hl : (String.singleton c).toUTF8.data.toList ≠ [] := by
+      have h : (String.singleton c).toUTF8.data.toList = String.utf8EncodeChar c := by
+        rw [String.toUTF8_eq_toByteArray, String.toByteArray_singleton, List.utf8Encode_singleton]
+        simp
+      rw [h]
+      exact String.utf8EncodeChar_ne_nil
+    obtain ⟨b, bs, hb⟩ := List.exists_cons_of_ne_nil hl
+    rw [hb]
+    simp [PercentEncoding.percentEncodeByteChars]
+  · simp
+
+private theorem parseOpaque_of_ne_nil (input : List Char) (hne : input ≠ []) :
+    Host.parseOpaque input =
+      if input.any Host.isForbiddenHostCodePoint then .error .forbiddenHostCodePoint
+      else .ok (.opaqueHost (PercentEncoding.utf8PercentEncode .c0Control (String.ofList input))) := by
+  cases input with
+  | nil => exact absurd rfl hne
+  | cons c cs => rfl
+
+private theorem parse_serialize_opaque (input : List Char) (t : String) (hne : input ≠ [])
     (hp : Host.parseOpaque input = .ok (.opaqueHost t)) :
     Host.parseChars t.toList true = .ok (.opaqueHost t) := by
-  unfold Host.parseOpaque at hp
+  rw [parseOpaque_of_ne_nil input hne] at hp
   by_cases hany : input.any Host.isForbiddenHostCodePoint = true
   · simp [hany] at hp
   · have hany' : input.any Host.isForbiddenHostCodePoint = false := by simpa using hany
@@ -183,6 +206,11 @@ private theorem parse_serialize_opaque (input : List Char) (t : String)
       rw [ht] at hd
       obtain ⟨c, hc, hdc⟩ := List.mem_flatMap.mp hd
       exact hprops c hc d hdc
+    have htne : t.toList ≠ [] := by
+      rw [ht]
+      obtain ⟨c0, cs0, rfl⟩ := List.exists_cons_of_ne_nil hne
+      simp only [List.flatMap_cons, ne_eq, List.append_eq_nil_iff, not_and]
+      exact fun h => absurd h (enc_ne_nil c0)
     have hnb : ∀ rest, t.toList ≠ '[' :: rest := by
       intro rest h
       have := (hL '[' (by rw [h]; simp)).2
@@ -190,7 +218,11 @@ private theorem parse_serialize_opaque (input : List Char) (t : String)
       decide
     rw [parseChars_nonBracket _ _ hnb]
     simp only [ite_true]
+    obtain ⟨d0, ds0, hd0⟩ := List.exists_cons_of_ne_nil htne
     unfold Host.parseOpaque
+    rw [hd0]
+    dsimp only
+    rw [← hd0]
     have hany2 : t.toList.any Host.isForbiddenHostCodePoint = false := by
       simp only [List.any_eq_false]
       intro d hd
@@ -269,13 +301,19 @@ private theorem parseDomain_cases (input : List Char) (h : Host) (hp : Host.pars
           exact (toLower_ascii e (hascii e he2)).2
 
 private theorem parseOpaque_ok (input : List Char) (h : Host) (hp : Host.parseOpaque input = .ok h) :
-    ∃ t, h = .opaqueHost t := by
-  unfold Host.parseOpaque at hp
+    h = .empty ∨ ∃ t, h = .opaqueHost t ∧ input ≠ [] := by
+  by_cases hnil : input = []
+  · left
+    subst hnil
+    simp only [Host.parseOpaque, Except.ok.injEq] at hp
+    exact hp.symm
+  right
+  rw [parseOpaque_of_ne_nil input hnil] at hp
   by_cases hany : input.any Host.isForbiddenHostCodePoint = true
   · simp [hany] at hp
   · have hany' : input.any Host.isForbiddenHostCodePoint = false := by simpa using hany
     simp only [hany', Bool.false_eq_true, ite_false, Except.ok.injEq] at hp
-    exact ⟨_, hp.symm⟩
+    exact ⟨_, hp.symm, hnil⟩
 
 theorem parse_serialize_of_parse (input : String) (isOpaque : Bool) (h : Host)
     (hp : Host.parse input isOpaque = .ok h) :
@@ -299,9 +337,10 @@ theorem parse_serialize_of_parse (input : String) (isOpaque : Bool) (h : Host)
     by_cases hop : isOpaque = true
     · subst hop
       simp only [ite_true] at hp
-      obtain ⟨t, rfl⟩ := parseOpaque_ok _ _ hp
-      have := parse_serialize_opaque input.toList t hp
-      simpa [Host.parse, Host.serialize] using this
+      rcases parseOpaque_ok _ _ hp with rfl | ⟨t, rfl, hne⟩
+      · simp [Host.parse, Host.serialize, Host.parseChars, Host.parseOpaque]
+      · have := parse_serialize_opaque input.toList t hne hp
+        simpa [Host.parse, Host.serialize] using this
     · have hf : isOpaque = false := by simpa using hop
       subst hf
       simp only [Bool.false_eq_true, ite_false] at hp

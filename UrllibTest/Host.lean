@@ -114,7 +114,10 @@ def guardChecks : List UrllibTest.Check := [
   { name := "parses a bracketed host into an IPv6 host", holds := match Host.parse "[::1]" false with | .ok (.ipv6 _) => true | _ => false },
   { name := "rejects a space in an opaque host with the forbidden host code point error", holds := match Host.parse "a b" true with | .error .forbiddenHostCodePoint => true | _ => false },
   { name := "parses an opaque host into an opaque host", holds := match Host.parse "ab" true with | .ok (.opaqueHost text) => text == "ab" | _ => false },
-  { name := "serializes the empty host to the empty string", holds := Host.serialize .empty == "" }
+  { name := "serializes the empty host to the empty string", holds := Host.serialize .empty == "" },
+  { name := "parses an empty input of a non-special URL into the empty host", holds := match Host.parse "" true with | .ok .empty => true | _ => false },
+  { name := "re-parses the serialized empty host into the empty host", holds := match Host.parse (Host.serialize .empty) true with | .ok .empty => true | _ => false },
+  { name := "parses a non-empty opaque host into an opaque host rather than the empty host", holds := match Host.parse "a" true with | .ok .empty => false | _ => true }
 ]
 
 /-- info: [] -/

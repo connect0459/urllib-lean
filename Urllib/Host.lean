@@ -47,12 +47,15 @@ def isForbiddenHostCodePoint (c : Char) : Bool :=
 def isForbiddenDomainCodePoint (c : Char) : Bool :=
   isForbiddenHostCodePoint c || c.toNat ≤ 0x1F || c == '%' || c.toNat == 0x7F
 
-/-- The opaque-host parser. -/
+/-- The opaque-host parser; the empty input yields the empty host. -/
 def parseOpaque (input : List Char) : Except Error Host :=
-  if input.any isForbiddenHostCodePoint then
-    .error .forbiddenHostCodePoint
-  else
-    .ok (.opaqueHost (PercentEncoding.utf8PercentEncode .c0Control (String.ofList input)))
+  match input with
+  | [] => .ok .empty
+  | _ =>
+    if input.any isForbiddenHostCodePoint then
+      .error .forbiddenHostCodePoint
+    else
+      .ok (.opaqueHost (PercentEncoding.utf8PercentEncode .c0Control (String.ofList input)))
 
 /-- Domain to ASCII without UTS #46: rejects non-ASCII input and lowercases ASCII letters; `xn--` labels pass through unchanged. -/
 def domainToAscii (domain : List Char) : Except Error (List Char) :=
