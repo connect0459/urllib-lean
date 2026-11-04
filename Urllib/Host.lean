@@ -31,36 +31,43 @@ def isForbiddenHostCodePoint (c : Char) : Bool :=
 def isForbiddenDomainCodePoint (c : Char) : Bool :=
   isForbiddenHostCodePoint c || c.toNat ≤ 0x1F || c == '%' || c.toNat == 0x7F
 
-def parseOpaque (input : String) : Except Error Host :=
+def parseOpaque (input : List Char) : Except Error Host :=
   if input.any isForbiddenHostCodePoint then
     .error .forbiddenHostCodePoint
   else
-    .ok (.opaqueHost (PercentEncoding.utf8PercentEncode .c0Control input))
+    .ok (.opaqueHost (PercentEncoding.utf8PercentEncode .c0Control (String.ofList input)))
 
-def domainToAscii (domain : String) : Except Error String :=
+def domainToAscii (domain : List Char) : Except Error (List Char) :=
   if domain.any (fun (c : Char) => decide (128 ≤ c.toNat)) then
     .error .nonAsciiDomain
   else
     let lowered := domain.map Char.toLower
     if lowered.isEmpty then .error .emptyDomain else .ok lowered
 
-def parse (input : String) (isOpaque : Bool) : Except Error Host := do
-  if input.startsWith "[" then
-    if !input.endsWith "]" then throw .unclosedBracket
-    let inner := String.ofList (input.toList.drop 1).dropLast
-    let address ← (Ipv6.parse inner).mapError Error.ipv6
-    return .ipv6 address
-  else if isOpaque then
-    parseOpaque input
+def parseDomain (input : List Char) : Except Error Host := do
+  let domain := PercentEncoding.utf8DecodeWithoutBom
+    (PercentEncoding.percentDecodeString (String.ofList input))
+  let asciiDomain ← domainToAscii domain.toList
+  if asciiDomain.any isForbiddenDomainCodePoint then throw .forbiddenDomainCodePoint
+  if Ipv4.endsInNumber (String.ofList asciiDomain) then
+    let address ← (Ipv4.parse (String.ofList asciiDomain)).mapError Error.ipv4
+    return .ipv4 address
   else
-    let domain := PercentEncoding.utf8DecodeWithoutBom (PercentEncoding.percentDecodeString input)
-    let asciiDomain ← domainToAscii domain
-    if asciiDomain.any isForbiddenDomainCodePoint then throw .forbiddenDomainCodePoint
-    if Ipv4.endsInNumber asciiDomain then
-      let address ← (Ipv4.parse asciiDomain).mapError Error.ipv4
-      return .ipv4 address
+    return .domain (String.ofList asciiDomain)
+
+def parseChars (input : List Char) (isOpaque : Bool) : Except Error Host :=
+  match input with
+  | '[' :: rest =>
+    if rest.getLast? = some ']' then
+      match Ipv6.parse (String.ofList rest.dropLast) with
+      | .ok address => .ok (.ipv6 address)
+      | .error e => .error (.ipv6 e)
     else
-      return .domain asciiDomain
+      .error .unclosedBracket
+  | _ => if isOpaque then parseOpaque input else parseDomain input
+
+def parse (input : String) (isOpaque : Bool) : Except Error Host :=
+  parseChars input.toList isOpaque
 
 def serialize : Host → String
   | .domain name => name
