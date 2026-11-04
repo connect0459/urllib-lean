@@ -4,7 +4,7 @@ namespace Urllib.PercentEncoding
 
 theorem decodeBytes_percentEncodeByte :
     ∀ n, n < 256 →
-      decodeBytes (percentEncodeByte (UInt8.ofNat n)).toUTF8.toList = [UInt8.ofNat n] := by
+      decodeBytes (percentEncodeByte (UInt8.ofNat n)).toUTF8.data.toList = [UInt8.ofNat n] := by
   decide +kernel
 
 theorem component_contains_percent : EncodeSet.component.contains '%' = true := by

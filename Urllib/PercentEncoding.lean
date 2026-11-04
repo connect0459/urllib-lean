@@ -48,7 +48,7 @@ def percentEncodeByte (b : UInt8) : String :=
 
 def utf8PercentEncodeCodePoint (set : EncodeSet) (c : Char) : String :=
   if set.contains c then
-    String.join ((String.singleton c).toUTF8.toList.map percentEncodeByte)
+    String.join ((String.singleton c).toUTF8.data.toList.map percentEncodeByte)
   else
     String.singleton c
 
@@ -71,7 +71,7 @@ def decodeBytes : List UInt8 → List UInt8
 termination_by bytes => bytes.length
 
 def percentDecode (bytes : ByteArray) : ByteArray :=
-  ByteArray.mk (decodeBytes bytes.toList).toArray
+  ByteArray.mk (decodeBytes bytes.data.toList).toArray
 
 def percentDecodeString (input : String) : ByteArray :=
   percentDecode input.toUTF8
@@ -122,7 +122,7 @@ def decodeUtf8Loop : Utf8State → List UInt8 → List Char → List Char
 
 def utf8DecodeWithoutBom (bytes : ByteArray) : String :=
   let withoutBom :=
-    match bytes.toList with
+    match bytes.data.toList with
     | 0xEF :: 0xBB :: 0xBF :: rest => rest
     | all => all
   String.ofList (decodeUtf8Loop {} withoutBom []).reverse
