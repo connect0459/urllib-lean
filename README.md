@@ -19,6 +19,7 @@ This library is a Lean counterpart of [connect0459/urllib](https://github.com/co
 | `Urllib.Unicode.Normalization` | `nfc` (Normalization Form C) |
 | `Urllib.Url` | `Url` record (`scheme`, `username`, `password`, `host`, `port`, `path`, `query`, `fragment`), `Url.serialize`, and the getters `protocol`, `hostWithPort`, `hostname`, `portText`, `pathname`, `search`, `hash` |
 | `Urllib.Url.Parser` | `Url.parse (input : String) (base : Option Url)`, `Url.origin`, `Url.ParseError` |
+| `Urllib.Url.Setters` | `Url.setProtocol`, `setUsername`, `setPassword`, `setHost`, `setHostname`, `setPort`, `setPathname`, `setSearch`, `setHash` (each returns a new `Url`), `Url.setHref`, `Url.canParse`, `Url.join`, `Url.searchParams` |
 | `Urllib.Host` | `Host`, `Host.parse (input : String) (isOpaque : Bool)`, `Host.serialize`, `Host.Ipv4`, `Host.Ipv6` |
 
 Domains follow the domain parser of the URL Standard: an ASCII domain is only lowercased (for web compatibility), and any other domain is processed with UTS #46 (nontransitional processing, `CheckHyphens` off, `CheckBidi` and `CheckJoiners` on, STD3 rules and DNS length checks off); a failure is reported as `Host.Error.idna`. The Unicode data tables are generated from Unicode 18.0.0 by `scripts/generate_unicode_data.py` and committed.
@@ -34,7 +35,7 @@ Pre-release (v0.1.0 in preparation). Nothing is published yet.
 | form-urlencoded | Done |
 | URLSearchParams (standalone) | Done |
 | UTS #46 (IDNA) | Done |
-| URL parser and WPT conformance | Parser done (`urltestdata.json` passes); setters and helpers planned |
+| URL parser, setters, and WPT conformance | Done (`urltestdata.json`, `setters_tests.json`, and `toascii.json` pass); the URLSearchParams binding is planned |
 | URL Pattern Standard | Planned |
 
 v0.1.0 will be released once all of the above are implemented.
@@ -73,6 +74,9 @@ open Urllib
 #eval (Url.parse "HTTP://u@H:80/a/./b/../c?q#f").map Url.serialize
                                                -- Except.ok "http://u@h/a/c?q#f"
 
+#eval ((Url.parse "http://h:8080/a?q").map fun u => (u.setPort "80").setHash "x y").map Url.serialize
+                                               -- Except.ok "http://h/a?q#x%20y"
+
 #eval Host.parse "EXAMPLE.com" false           -- Except.ok (Host.domain "example.com")
 #eval Host.parse "faß.de" false                -- Except.ok (Host.domain "xn--fa-hia.de")
 #eval (Host.parse "0x7f.1" false).map Host.serialize     -- Except.ok "127.0.0.1"
@@ -82,7 +86,7 @@ open Urllib
 
 ## Compliance
 
-The URL parser passes every test of `urltestdata.json` of the Web Platform Tests (899 tests, with `href`, each component, and `origin` compared). The setters and the `toascii.json` and `setters_tests.json` suites arrive with the later items. UTS #46 is checked against every line of `IdnaTestV2.txt` of Unicode 18.0.0 (except two lines with unpaired surrogates, which a Lean string cannot hold) under four flag settings.
+The URL parser passes every test of `urltestdata.json` of the Web Platform Tests (899 tests, with `href`, each component, and `origin` compared). The setters pass every test of `setters_tests.json` (278 tests), and the host handling passes `toascii.json` through the URL parser and the `host` and `hostname` setters. UTS #46 is checked against every line of `IdnaTestV2.txt` of Unicode 18.0.0 (except two lines with unpaired surrogates, which a Lean string cannot hold) under four flag settings.
 
 ### Proved properties
 
