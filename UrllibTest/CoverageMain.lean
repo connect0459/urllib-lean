@@ -14,6 +14,7 @@ import UrllibTest.Idna
 import UrllibTest.Url
 import UrllibTest.Url.Parser
 import UrllibTest.Url.Setters
+import UrllibTest.Url.SearchParams
 
 def report (name : String) (failures : List String) : IO Nat := do
   IO.println s!"{name}: {failures.length} failures"
@@ -63,4 +64,5 @@ def main : IO UInt32 := do
   total := total + (← report "url setters wpt" UrllibTest.Url.setterFailures)
   total := total + (← report "url toascii wpt" UrllibTest.Url.asciiFailures)
   total := total + (← report "url setter checks" (UrllibTest.failedChecks UrllibTest.Url.checks))
+  total := total + (← report "url search params" (UrllibTest.failedChecks UrllibTest.Url.SearchParams.checks))
   return if total = 0 then 0 else 1

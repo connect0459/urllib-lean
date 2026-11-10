@@ -86,4 +86,13 @@ def join (url : Url) (reference : String) : Except ParseError Url :=
 def searchParams (url : Url) : SearchParams :=
   { pairs := FormUrlencoded.parse (url.query.getD "") }
 
+/-- The update steps of a `URLSearchParams` bound to a URL: the serialized list becomes the query, and the empty serialization removes it. -/
+def withSearchParams (url : Url) (params : SearchParams) : Url :=
+  let serialized := params.toString
+  { url with query := if serialized.isEmpty then none else some serialized }
+
+/-- Applies an operation on the search params of the URL and runs the update steps on the result. -/
+def updateSearchParams (url : Url) (operation : SearchParams → SearchParams) : Url :=
+  url.withSearchParams (operation url.searchParams)
+
 end Urllib.Url

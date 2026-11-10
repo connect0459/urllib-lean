@@ -19,7 +19,7 @@ This library is a Lean counterpart of [connect0459/urllib](https://github.com/co
 | `Urllib.Unicode.Normalization` | `nfc` (Normalization Form C) |
 | `Urllib.Url` | `Url` record (`scheme`, `username`, `password`, `host`, `port`, `path`, `query`, `fragment`), `Url.serialize`, and the getters `protocol`, `hostWithPort`, `hostname`, `portText`, `pathname`, `search`, `hash` |
 | `Urllib.Url.Parser` | `Url.parse (input : String) (base : Option Url)`, `Url.origin`, `Url.ParseError` |
-| `Urllib.Url.Setters` | `Url.setProtocol`, `setUsername`, `setPassword`, `setHost`, `setHostname`, `setPort`, `setPathname`, `setSearch`, `setHash` (each returns a new `Url`), `Url.setHref`, `Url.canParse`, `Url.join`, `Url.searchParams` |
+| `Urllib.Url.Setters` | `Url.setProtocol`, `setUsername`, `setPassword`, `setHost`, `setHostname`, `setPort`, `setPathname`, `setSearch`, `setHash` (each returns a new `Url`), `Url.setHref`, `Url.canParse`, `Url.join`, `Url.searchParams`, `Url.withSearchParams`, `Url.updateSearchParams` |
 | `Urllib.Host` | `Host`, `Host.parse (input : String) (isOpaque : Bool)`, `Host.serialize`, `Host.Ipv4`, `Host.Ipv6` |
 
 Domains follow the domain parser of the URL Standard: an ASCII domain is only lowercased (for web compatibility), and any other domain is processed with UTS #46 (nontransitional processing, `CheckHyphens` off, `CheckBidi` and `CheckJoiners` on, STD3 rules and DNS length checks off); a failure is reported as `Host.Error.idna`. The Unicode data tables are generated from Unicode 18.0.0 by `scripts/generate_unicode_data.py` and committed.
@@ -35,7 +35,7 @@ Pre-release (v0.1.0 in preparation). Nothing is published yet.
 | form-urlencoded | Done |
 | URLSearchParams (standalone) | Done |
 | UTS #46 (IDNA) | Done |
-| URL parser, setters, and WPT conformance | Done (`urltestdata.json`, `setters_tests.json`, and `toascii.json` pass); the URLSearchParams binding is planned |
+| URL parser, setters, and WPT conformance | Done (`urltestdata.json`, `setters_tests.json`, and `toascii.json` pass) and the `urlsearchparams-*` and `url-searchparams` tests are carried over, the binding included |
 | URL Pattern Standard | Planned |
 
 v0.1.0 will be released once all of the above are implemented.
