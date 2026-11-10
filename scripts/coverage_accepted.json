@@ -28,5 +28,23 @@
     "regions": 1,
     "arms": 1,
     "reason": "the first equation handles the empty list, so the compiler's second test of the list never fails"
+  },
+  "lp_Urllib_Urllib_SearchParams_size": {
+    "regions": 2,
+    "arms": 0,
+    "inlined": true,
+    "reason": "the compiler inlines this small function into its callers, so the standalone symbol is never called; its body runs inside the callers"
+  },
+  "lp_Urllib_Urllib_SearchParams_has": {
+    "regions": 2,
+    "arms": 0,
+    "inlined": true,
+    "reason": "the compiler inlines this small function into its callers, so the standalone symbol is never called; its body runs inside the callers"
+  },
+  "lp_Urllib_Urllib_SearchParams_toString": {
+    "regions": 2,
+    "arms": 0,
+    "inlined": true,
+    "reason": "the compiler inlines this small function into its callers, so the standalone symbol is never called; its body runs inside the callers"
   }
 }

@@ -100,6 +100,9 @@ def main():
             accepted_used["regions"] += regions_accepted
             accepted_used["arms"] += arms_accepted
             accepted_used[function["name"]] += 1
+            if allowance.get("inlined") and function["count"] == 0:
+                counter["functions"] -= 1
+                function = dict(function, count=1)
             uncovered_regions = uncovered_regions[regions_accepted:]
             uncovered_arms -= arms_accepted
         if args.show_uncovered:
