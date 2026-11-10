@@ -12,6 +12,7 @@ import Urllib.Idna
 import Urllib.Idna.Spec
 import Urllib.Regex
 import Urllib.Regex.Parser
+import Urllib.UrlPattern
 import Urllib.Url
 import Urllib.Url.Parser
 import Urllib.Url.Setters

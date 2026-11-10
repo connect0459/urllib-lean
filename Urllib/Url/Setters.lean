@@ -9,10 +9,17 @@ open Parser
 def removeTabsAndNewlines (input : String) : List Char :=
   input.toList.filter fun c => !(c == Char.ofNat 9 || c == Char.ofNat 10 || c == Char.ofNat 13)
 
-/-- Runs the basic URL parser on `input` with `url` as the URL and `state` as the state override, and returns the modified URL. -/
+/-- Runs the basic URL parser on `input` with `url` as the URL and `state` as the state override; a failure is reported, and the changes made before it are lost. -/
+def parseWithOverrideStrict (url : Url) (input : String) (state : State) : Except ParseError Url :=
+  let chars := (removeTabsAndNewlines input).toArray
+  run chars none (some state) false (16 * (chars.size + 8))
+    { state := state, url := url, buffer := "", atSignSeen := false,
+      insideBrackets := false, passwordTokenSeen := false } 0
+
+/-- Runs the basic URL parser on `input` with `url` as the URL and `state` as the state override, and returns the modified URL; a failure leaves the changes made before it. -/
 def parseWithOverride (url : Url) (input : String) (state : State) : Url :=
   let chars := (removeTabsAndNewlines input).toArray
-  match run chars none (some state) (16 * (chars.size + 8))
+  match run chars none (some state) true (16 * (chars.size + 8))
       { state := state, url := url, buffer := "", atSignSeen := false,
         insideBrackets := false, passwordTokenSeen := false } 0 with
   | .ok updated => updated

@@ -20,6 +20,8 @@ This library is a Lean counterpart of [connect0459/urllib](https://github.com/co
 | `Urllib.Url` | `Url` record (`scheme`, `username`, `password`, `host`, `port`, `path`, `query`, `fragment`), `Url.serialize`, and the getters `protocol`, `hostWithPort`, `hostname`, `portText`, `pathname`, `search`, `hash` |
 | `Urllib.Url.Parser` | `Url.parse (input : String) (base : Option Url)`, `Url.origin`, `Url.ParseError` |
 | `Urllib.Url.Setters` | `Url.setProtocol`, `setUsername`, `setPassword`, `setHost`, `setHostname`, `setPort`, `setPathname`, `setSearch`, `setHash` (each returns a new `Url`), `Url.setHref`, `Url.canParse`, `Url.join`, `Url.searchParams`, `Url.withSearchParams`, `Url.updateSearchParams` |
+| `Urllib.Regex` | `Regex.Regex.compile (pattern : String) (ignoreCase : Bool)`, `Regex.exec`, `Regex.test`: a backtracking engine for the JavaScript regular expression subset that URL Pattern needs |
+| `Urllib.UrlPattern` | `UrlPattern.create (input : Input) (baseUrl : Option String) (options : UrlPatternOptions)`, `exec`, `test`, `hasRegexpGroups`, `generate`, `compareComponent`, `Init`, `Input` |
 | `Urllib.Host` | `Host`, `Host.parse (input : String) (isOpaque : Bool)`, `Host.serialize`, `Host.Ipv4`, `Host.Ipv6` |
 
 Domains follow the domain parser of the URL Standard: an ASCII domain is only lowercased (for web compatibility), and any other domain is processed with UTS #46 (nontransitional processing, `CheckHyphens` off, `CheckBidi` and `CheckJoiners` on, STD3 rules and DNS length checks off); a failure is reported as `Host.Error.idna`. The Unicode data tables are generated from Unicode 18.0.0 by `scripts/generate_unicode_data.py` and committed.
@@ -36,7 +38,7 @@ Pre-release (v0.1.0 in preparation). Nothing is published yet.
 | URLSearchParams (standalone) | Done |
 | UTS #46 (IDNA) | Done |
 | URL parser, setters, and WPT conformance | Done (`urltestdata.json`, `setters_tests.json`, and `toascii.json` pass) and the `urlsearchparams-*` and `url-searchparams` tests are carried over, the binding included |
-| URL Pattern Standard | Planned |
+| URL Pattern Standard | Done (`urlpatterntestdata.json` passes; see the limits of the regular expression engine below) |
 
 v0.1.0 will be released once all of the above are implemented.
 
@@ -84,9 +86,13 @@ open Urllib
                                                -- Except.ok "[2001:db8::1:0:0:1]"
 ```
 
+## Limits of the regular expression engine
+
+URL Pattern compiles the regular expression groups of a pattern with `Urllib.Regex`, which implements the unicode-sets mode of JavaScript regular expressions as far as the URL Pattern tests need it: literals and escapes, classes with ranges, nested classes, subtraction and intersection, alternation, capturing, named and non-capturing groups, greedy and lazy quantifiers, anchors, word boundaries, and case folding of ASCII letters. Lookahead, lookbehind, backreferences, Unicode property escapes (`\p{...}`), and class strings (`\q{...}`) are reported as unsupported, so a pattern that uses them fails to construct. Case-insensitive matching folds ASCII letters only.
+
 ## Compliance
 
-The URL parser passes every test of `urltestdata.json` of the Web Platform Tests (899 tests, with `href`, each component, and `origin` compared). The setters pass every test of `setters_tests.json` (278 tests), and the host handling passes `toascii.json` through the URL parser and the `host` and `hostname` setters. UTS #46 is checked against every line of `IdnaTestV2.txt` of Unicode 18.0.0 (except two lines with unpaired surrogates, which a Lean string cannot hold) under four flag settings.
+The URL parser passes every test of `urltestdata.json` of the Web Platform Tests (899 tests, with `href`, each component, and `origin` compared). The URL Pattern implementation passes 365 of the 369 tests of `urlpatterntestdata.json` (the other four carry a lone surrogate, which a Lean string cannot hold), all 25 tests of the compare data, all 19 tests of the generate data, and the `hasRegExpGroups` tests; `generate` and `compareComponent` are defined by those tentative tests, not by the standard. The setters pass every test of `setters_tests.json` (278 tests), and the host handling passes `toascii.json` through the URL parser and the `host` and `hostname` setters. UTS #46 is checked against every line of `IdnaTestV2.txt` of Unicode 18.0.0 (except two lines with unpaired surrogates, which a Lean string cannot hold) under four flag settings.
 
 ### Proved properties
 

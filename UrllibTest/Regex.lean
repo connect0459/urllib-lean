@@ -93,8 +93,54 @@ def checks : List UrllibTest.Check := [
   { name := "a bad group name is a syntax error", holds := errorOf "(?<1a>x)" == some .syntax && errorOf "(?<a" == some .syntax && errorOf "(?<" == some .syntax },
   { name := "a counted repetition may be lazy", holds := run "^(a{1,2}?)(a*)$" "aaa" == some [some "a", some "aa"] },
   { name := "an open ended counted repetition may be lazy", holds := run "^(a{1,}?)(a*)$" "aaa" == some [some "a", some "aa"] },
+  { name := "every white space code point of JavaScript is a space", holds :=
+      [9, 10, 11, 12, 13, 32, 0xA0, 0x1680, 0x2000, 0x2005, 0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000, 0xFEFF].all
+        fun n => isSpaceChar (Char.ofNat n) },
+  { name := "the code points next to the white space ranges are not spaces", holds :=
+      [8, 14, 31, 33, 0x9F, 0xA1, 0x167F, 0x1681, 0x1FFF, 0x200B, 0x2027, 0x202A, 0x202E, 0x2030, 0x205E, 0x2060, 0x2FFF, 0x3001, 0xFEFE, 0xFF00].all
+        fun n => !isSpaceChar (Char.ofNat n) },
+  { name := "line terminators are carriage return, line feed, and the two separators", holds :=
+      [10, 13, 0x2028, 0x2029].all (fun n => isLineTerminator (Char.ofNat n)) &&
+      [9, 11, 12, 14, 0x2027, 0x202A].all (fun n => !isLineTerminator (Char.ofNat n)) },
+  { name := "a dot does not match the separators either", holds := !accepts "^.$" "\u2028" && !accepts "^.$" "\u2029" && accepts "^.$" "\u2027" },
+  { name := "word characters are ASCII letters, digits, and underscore only", holds :=
+      isWordChar 'a' && isWordChar 'Z' && isWordChar '0' && isWordChar '_' && !isWordChar '-' && !isWordChar 'é' },
+  { name := "hexadecimal escapes accept every digit and reject the characters next to them", holds :=
+      accepts "^\\x0f$" "\x0f" && accepts "^\\xAf$" "\u00af" && accepts "^\\xFa$" "\u00fa" && accepts "^\\x09$" "\t" &&
+      errorOf "\\x/1" == some .syntax && errorOf "\\x:1" == some .syntax && errorOf "\\x@1" == some .syntax &&
+      errorOf "\\xG1" == some .syntax && errorOf "\\x`1" == some .syntax && errorOf "\\xg1" == some .syntax },
+  { name := "group names accept letters, dollar signs, underscores, and digits after the first", holds :=
+      errorOf "(?<a1_$>x)" == none && errorOf "(?<$a>x)" == none && errorOf "(?<_a>x)" == none && errorOf "(?<A>x)" == none &&
+      errorOf "(?<-a>x)" == some .syntax && errorOf "(?<a-b>x)" == some .syntax && errorOf "(?<0a>x)" == some .syntax },
   { name := "a quantifier on a nested class works", holds := accepts "^[[a-c]]{2}$" "ab" }
 ]
+
+/-- Patterns that are valid, and some that are not, to be truncated and mutated by the robustness check. -/
+def corpus : List String :=
+  ["^abc$", "^(a)(b)(c)$", "^(?:a|b)+$", "^(?<x>a|bc)*?$", "^[a-z&&[^aeiou]]+$", "^[[a-z]--a--b]$", "^[\\d\\w\\s\\-]{1,3}?$",
+   "\\bfoo\\B", "^\\x41\\u0042\\u{1F4A9}\\uD83D\\uDCA9\\cJ\\0$", "[^\\]\\\\]", "(?=a)(?!b)(?<=c)(?<!d)", "\\p{L}\\k<x>\\1",
+   "[!!]", "[a-\\d]", "[\\B]", "a{2,3}", "a{3,2}", "(?<1x>a)", "(?R)", "[[a-z]&&a--b]", "[a&&[b]]", "\\u{110000}", "\\uD83D\\u0041"]
+
+/-- Every prefix, every suffix, and every string with one code point removed. -/
+def variants (s : String) : List String :=
+  let cs := s.toList
+  (List.range (cs.length + 1)).flatMap fun n =>
+    [String.ofList (cs.take n), String.ofList (cs.drop n)] ++
+      (if n < cs.length then [String.ofList (cs.take n ++ cs.drop (n + 1))] else [])
+
+def robustnessChecks : List UrllibTest.Check := [
+  { name := "compiling truncated and mutated patterns always terminates with a result", holds :=
+      corpus.all fun s => (variants s).all fun v =>
+        match Regex.compile v false with
+        | .ok re => (re.exec "aAbc12 -x\n").isSome || (re.exec "aAbc12 -x\n").isNone
+        | .error _ => true },
+  { name := "a pattern that compiles keeps compiling when it is made case-insensitive", holds :=
+      corpus.all fun s => ((Regex.compile s false).toOption.isSome) == ((Regex.compile s true).toOption.isSome) }
+]
+
+/-- info: [] -/
+#guard_msgs in
+#eval UrllibTest.failedChecks robustnessChecks
 
 /-- info: [] -/
 #guard_msgs in

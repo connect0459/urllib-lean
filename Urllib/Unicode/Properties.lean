@@ -97,6 +97,12 @@ def bidiTable : Array (Range BidiClass) :=
 def joiningTable : Array (Range JoiningType) :=
   parseTable decodeJoining Data.joiningTypes
 
+/-- The ID_Start ranges. -/
+def idStartTable : Array (Range Unit) := parseTable decodeUnit Data.idStartRanges
+
+/-- The ID_Continue ranges. -/
+def idContinueTable : Array (Range Unit) := parseTable decodeUnit Data.idContinueRanges
+
 /-- The Canonical_Combining_Class ranges for the non-zero classes. -/
 def combiningClassTable : Array (Range Nat) := parseTable decodeNat Data.combiningClasses
 
@@ -111,6 +117,14 @@ def bidiClass (c : Char) : BidiClass :=
 /-- The Joining_Type of `c`. -/
 def joiningType (c : Char) : JoiningType :=
   (lookup? joiningTable c.toNat).getD .none
+
+/-- Whether `c` has the ID_Start property. -/
+def isIdStart (c : Char) : Bool :=
+  (lookup? idStartTable c.toNat).isSome
+
+/-- Whether `c` has the ID_Continue property. -/
+def isIdContinue (c : Char) : Bool :=
+  (lookup? idContinueTable c.toNat).isSome
 
 /-- The Canonical_Combining_Class of `c`; no character below U+0300 has a non-zero class. -/
 def combiningClass (c : Char) : Nat :=

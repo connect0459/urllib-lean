@@ -12,6 +12,8 @@ import UrllibTest.Unicode.Normalization
 import UrllibTest.Unicode.Properties
 import UrllibTest.Idna
 import UrllibTest.Regex
+import UrllibTest.UrlPattern
+import UrllibTest.UrlPattern.Units
 import UrllibTest.Url
 import UrllibTest.Url.Parser
 import UrllibTest.Url.Setters
@@ -66,5 +68,12 @@ def main : IO UInt32 := do
   total := total + (← report "url toascii wpt" UrllibTest.Url.asciiFailures)
   total := total + (← report "url setter checks" (UrllibTest.failedChecks UrllibTest.Url.checks))
   total := total + (← report "url search params" (UrllibTest.failedChecks UrllibTest.Url.SearchParams.checks))
+  total := total + (← report "regex robustness" (UrllibTest.failedChecks UrllibTest.Regex.robustnessChecks))
   total := total + (← report "regex checks" (UrllibTest.failedChecks UrllibTest.Regex.checks))
+  total := total + (← report "urlpattern wpt" UrllibTest.UrlPattern.failures)
+  total := total + (← report "urlpattern units" (UrllibTest.failedChecks UrllibTest.UrlPattern.Units.checks))
+  total := total + (← report "urlpattern robustness" (UrllibTest.failedChecks UrllibTest.UrlPattern.robustnessChecks))
+  total := total + (← report "urlpattern compare" UrllibTest.UrlPattern.compareFailures)
+  total := total + (← report "urlpattern generate" UrllibTest.UrlPattern.generateFailures)
+  total := total + (← report "urlpattern hasRegExpGroups" (UrllibTest.failedChecks UrllibTest.UrlPattern.hasRegexpGroupsChecks))
   return if total = 0 then 0 else 1

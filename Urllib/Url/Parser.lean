@@ -185,9 +185,9 @@ def skip (e : Env) (m : Machine) : Step := .next m (e.pointer + 2)
 /-- The machine in another state. -/
 def go (e : Env) (state : State) : Machine := { e.m with state := state }
 
-/-- Fails; with a state override the URL is left as it is, because the setter then ignores the failure. -/
-def fail (e : Env) (error : ParseError) : Step :=
-  if e.override.isSome then .done e.m else .fail error
+/-- Fails; the caller decides whether a failure under a state override is kept or ignored. -/
+def fail (_e : Env) (error : ParseError) : Step :=
+  .fail error
 
 /-- The machine with another URL in another state. -/
 def withUrl (e : Env) (url : Url) (state : State) : Machine := { e.m with url := url, state := state }
@@ -529,14 +529,15 @@ def step (e : Env) : Step :=
   | .fragment => fragment e
 
 /-- Runs the state machine; `fuel` bounds the number of steps. -/
-def run (input : Array Char) (base : Option Url) (override : Option State) : Nat → Machine → Nat → Except ParseError Url
+def run (input : Array Char) (base : Option Url) (override : Option State) (ignoreFailure : Bool) :
+    Nat → Machine → Nat → Except ParseError Url
   | 0, _, _ => .error .fuelExhausted
   | fuel + 1, m, pointer =>
     if input.size < pointer then .ok m.url
     else
       match step { input := input, base := base, m := m, pointer := pointer, override := override } with
-      | .next m' pointer' => run input base override fuel m' pointer'
-      | .fail err => .error err
+      | .next m' pointer' => run input base override ignoreFailure fuel m' pointer'
+      | .fail err => if ignoreFailure then .ok m.url else .error err
       | .done m' => .ok m'.url
 
 end Parser
@@ -554,7 +555,7 @@ def preprocess (input : String) : List Char :=
 /-- The basic URL parser of the URL Standard without a state override. -/
 def parse (input : String) (base : Option Url := none) : Except ParseError Url :=
   let chars := (preprocess input).toArray
-  run chars base none (16 * (chars.size + 8))
+  run chars base none false (16 * (chars.size + 8))
     { state := .schemeStart, url := emptyUrl, buffer := "", atSignSeen := false,
       insideBrackets := false, passwordTokenSeen := false } 0
 

@@ -5,7 +5,7 @@ Usage: python3 -I scripts/generate_unicode_data.py UCD_DIR
 
 UCD_DIR must contain the following files of Unicode UNICODE_VERSION:
 IdnaMappingTable.txt, UnicodeData.txt, DerivedNormalizationProps.txt,
-DerivedBidiClass.txt, DerivedJoiningType.txt, DerivedCombiningClass.txt.
+DerivedBidiClass.txt, DerivedJoiningType.txt, DerivedCombiningClass.txt, DerivedCoreProperties.txt.
 """
 
 import os
@@ -189,6 +189,15 @@ def joining_types(ucd):
     return "\\n".join(f"{hex_(low)} {hex_(high)} {value}" for low, high, value in merge(ranges))
 
 
+def core_property(ucd, name):
+    ranges = []
+    for low, high, fields in rows(os.path.join(ucd, "DerivedCoreProperties.txt")):
+        if fields[0] == name:
+            ranges.append((low, high, name))
+    ranges.sort()
+    return "\\n".join(f"{hex_(low)} {hex_(high)}" for low, high, _ in merge(ranges))
+
+
 def main():
     ucd = sys.argv[1]
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Urllib", "Unicode", "Data")
@@ -214,6 +223,8 @@ def main():
             lean_module("Ranges of code points with General_Category Mark: lines `low high`.", "markRanges", marks(ucd)),
             lean_module("Bidi_Class of every code point, in ranges: lines `low high class`.", "bidiClasses", bidi_classes(ucd)),
             lean_module("Joining_Type L, R, D, and T ranges: lines `low high type`.", "joiningTypes", joining_types(ucd)),
+            lean_module("The ID_Start property: lines `low high`.", "idStartRanges", core_property(ucd, "ID_Start")),
+            lean_module("The ID_Continue property: lines `low high`.", "idContinueRanges", core_property(ucd, "ID_Continue")),
         ],
     )
 
