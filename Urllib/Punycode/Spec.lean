@@ -693,4 +693,62 @@ theorem encode_no_delimiter_of_no_basic (s : String)
   simp only [h, List.isEmpty_nil, ite_true, List.nil_append]
   exact hext
 
+private theorem encodeIntegerFrom_digits (bias : Nat) :
+    ∀ q k, ∀ c ∈ encodeIntegerFrom bias k q, ∃ d, d < 36 ∧ c = digitToChar d := by
+  intro q
+  induction q using Nat.strongRecOn with
+  | _ q ih =>
+    intro k c hc
+    rw [encodeIntegerFrom] at hc
+    have h1 := one_le_threshold k bias
+    have h2 := threshold_le k bias
+    split at hc
+    · cases hc with
+      | head => exact ⟨q, by omega, rfl⟩
+      | tail _ h => cases h
+    · cases hc with
+      | head =>
+        refine ⟨_, ?_, rfl⟩
+        unfold base
+        have : (q - threshold k bias) % (36 - threshold k bias) < 36 - threshold k bias :=
+          Nat.mod_lt _ (by omega)
+        omega
+      | tail _ h =>
+        refine ih _ ?_ _ c h
+        unfold base
+        exact Nat.lt_of_le_of_lt (Nat.div_le_self _ _) (by omega)
+
+private theorem encodeInsertions_digits : ∀ (plan current : List (Nat × Nat)) (n i bias : Nat),
+    ∀ c ∈ encodeInsertions current n i bias plan, ∃ d, d < 36 ∧ c = digitToChar d
+  | [], _, _, _, _ => by
+    intro c hc
+    cases hc
+  | item :: rest, current, n, i, bias => by
+    intro c hc
+    unfold encodeInsertions at hc
+    rcases List.mem_append.mp hc with h | h
+    · exact encodeIntegerFrom_digits _ _ _ c h
+    · exact encodeInsertions_digits rest _ _ _ _ c h
+
+/-- Every character of an encoding is a basic code point of the input, the delimiter, or a digit character. -/
+theorem encode_char_cases (input : String) :
+    ∀ c ∈ (encode input).toList,
+      (c ∈ input.toList ∧ c.toNat < 128) ∨ c = '-' ∨ ∃ d, d < 36 ∧ c = digitToChar d := by
+  intro c hc
+  unfold encode at hc
+  rw [String.toList_ofList] at hc
+  rcases List.mem_append.mp hc with h | h
+  · split at h
+    · cases h
+    · rcases List.mem_append.mp h with h | h
+      · rw [basic_chars input] at h
+        have hf := List.mem_filter.mp h
+        left
+        exact ⟨hf.1, by simpa using hf.2⟩
+      · cases h with
+        | head => right; left; rfl
+        | tail _ h => cases h
+  · right; right
+    exact encodeInsertions_digits _ _ _ _ _ c h
+
 end Urllib.Punycode

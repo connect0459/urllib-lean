@@ -100,9 +100,9 @@ def joiningTable : Array (Range JoiningType) :=
 /-- The Canonical_Combining_Class ranges for the non-zero classes. -/
 def combiningClassTable : Array (Range Nat) := parseTable decodeNat Data.combiningClasses
 
-/-- Whether `c` has General_Category Mark. -/
+/-- Whether `c` has General_Category Mark; no mark is below U+0300. -/
 def isMark (c : Char) : Bool :=
-  (lookup? markTable c.toNat).isSome
+  0x300 ≤ c.toNat && (lookup? markTable c.toNat).isSome
 
 /-- The Bidi_Class of `c`. -/
 def bidiClass (c : Char) : BidiClass :=

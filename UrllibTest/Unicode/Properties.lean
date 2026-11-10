@@ -8,6 +8,8 @@ open Urllib.Unicode
 def checks : List UrllibTest.Check := [
   { name := "a combining grave accent is a mark", holds := isMark (Char.ofNat 0x300) },
   { name := "a Latin letter is not a mark", holds := !isMark 'a' },
+  { name := "no code point below U+0300 is a mark in the table", holds := (List.range 0x300).all fun n => (lookup? markTable n).isNone },
+  { name := "no code point below U+0590 is right-to-left or an Arabic number in the table", holds := (List.range 0x590).all fun n => match bidiClass (Char.ofNat n) with | .r | .al | .an => false | _ => true },
   { name := "a supplementary-plane mark is found", holds := isMark (Char.ofNat 0x1D165) },
   { name := "a Latin letter is left-to-right", holds := bidiClass 'a' == .l },
   { name := "a Hebrew letter is right-to-left", holds := bidiClass (Char.ofNat 0x5D0) == .r },

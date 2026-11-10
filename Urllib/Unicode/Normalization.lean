@@ -127,10 +127,14 @@ where
 def composeAll (chars : List Char) : List Char :=
   (chars.foldl composeStep { output := #[], starter := none, lastClass := 0 }).output.toList
 
+/-- The canonical decomposition of `c`, or `c` itself when it does not decompose. -/
+def decomposeChar (c : Char) : List Char :=
+  match decomposition c with
+  | [] => [c]
+  | parts => parts
+
 /-- Normalization Form C. -/
 def nfc (chars : List Char) : List Char :=
-  composeAll (reorder (chars.flatMap fun c => match decomposition c with
-    | [] => [c]
-    | parts => parts))
+  composeAll (reorder (chars.flatMap decomposeChar))
 
 end Urllib.Unicode

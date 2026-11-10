@@ -149,9 +149,13 @@ def validityErrors (options : Options) (label : List Char) : List Error :=
   codePointErrors ++
   (if options.checkJoiners && !contextJOk label then [Error.contextJ] else [])
 
+/-- Whether a code point is right-to-left or an Arabic number; none is below U+0590. -/
+def isRtl (c : Char) : Bool :=
+  0x590 ≤ c.toNat && match bidiClass c with | .r | .al | .an => true | _ => false
+
 /-- Whether a label contains a right-to-left or Arabic number code point. -/
 def isRtlLabel (label : List Char) : Bool :=
-  label.any fun c => match bidiClass c with | .r | .al | .an => true | _ => false
+  label.any isRtl
 
 /-- The Bidi rule of RFC 5893 section 2 on the Bidi classes of a label. -/
 def bidiOk (classes : List BidiClass) : Bool :=
@@ -181,16 +185,38 @@ def convertLabel (label : List Char) : List Char × List Error × Bool :=
         (chars, if chars.isEmpty || chars.all isAscii then [Error.emptyOrAsciiPunycodeLabel] else [], true)
   else (label, [], true)
 
-/-- The processing steps of UTS #46 section 4: the converted domain and the recorded errors. -/
-def process (options : Options) (domain : List Char) : List Char × List Error :=
-  let mapped := nfc (domain.flatMap mapChar)
-  let converted := (mapped.splitOn '.').map convertLabel
+/-- Splits a code point list at every full stop; the result is never empty. -/
+def splitDots (chars : List Char) : List (List Char) :=
+  chars.foldr (fun c acc => if c == '.' then [] :: acc else (c :: acc.headD []) :: acc.tail) [[]]
+
+/-- Joins labels with full stops. -/
+def joinDots : List (List Char) → List Char
+  | [] => []
+  | [label] => label
+  | label :: rest => label ++ '.' :: joinDots rest
+
+/-- The labels that pass the Convert/Validate step together with the errors recorded for them. -/
+def processConverted (options : Options) (converted : List (List Char × List Error × Bool)) :
+    List (List Char) × List Error :=
   let isBidiDomain := options.checkBidi && converted.any fun (label, _, _) => isRtlLabel label
   let results := converted.map fun (label, errors, validate) =>
     (label,
       errors ++ (if validate && !label.isEmpty then validityErrors options label else []) ++
         (if isBidiDomain && !bidiOk (label.map bidiClass) then [Error.bidi] else []))
-  (['.'].intercalate (results.map (·.1)), results.flatMap (·.2))
+  (results.map (·.1), results.flatMap (·.2))
+
+/-- Steps 3 and 4 of processing on the mapped and normalized string: the converted labels and the recorded errors. -/
+def processMapped (options : Options) (mapped : List Char) : List (List Char) × List Error :=
+  processConverted options ((splitDots mapped).map convertLabel)
+
+/-- The processing steps of UTS #46 section 4: the converted labels and the recorded errors. -/
+def processLabels (options : Options) (domain : List Char) : List (List Char) × List Error :=
+  processMapped options (nfc (domain.flatMap mapChar))
+
+/-- The processing steps of UTS #46 section 4: the converted domain and the recorded errors. -/
+def process (options : Options) (domain : List Char) : List Char × List Error :=
+  let (labels, errors) := processLabels options domain
+  (joinDots labels, errors)
 
 /-- Whether the DNS length restrictions of ToASCII are violated. -/
 def lengthErrors (labels : List (List Char)) : List Error :=
@@ -199,17 +225,20 @@ def lengthErrors (labels : List (List Char)) : List Error :=
   (if labels.any (fun l => l.isEmpty || 63 < l.length) then [Error.labelLength] else []) ++
     (if total < 1 || 253 < total then [Error.domainLength] else [])
 
+/-- ToASCII step 3: a label with non-ASCII code points becomes Punycode with the ACE prefix. -/
+def encodeLabel (label : List Char) : List Char :=
+  if label.all isAscii then label else acePrefix ++ (Punycode.encode (String.ofList label)).toList
+
 /-- UTS #46 ToUnicode: the converted domain and the recorded errors. -/
 def toUnicodeChars (options : Options) (domain : List Char) : List Char × List Error :=
   process options domain
 
 /-- UTS #46 ToASCII on code points. -/
 def toAsciiChars (options : Options) (domain : List Char) : Except (List Error) (List Char) :=
-  let (processed, errors) := process options domain
-  let labels := (processed.splitOn '.').map fun label =>
-    if label.all isAscii then label else acePrefix ++ (Punycode.encode (String.ofList label)).toList
-  let allErrors := errors ++ (if options.verifyDnsLength then lengthErrors labels else [])
-  if allErrors.isEmpty then .ok (['.'].intercalate labels) else .error allErrors
+  let (labels, errors) := processLabels options domain
+  let encoded := labels.map encodeLabel
+  let allErrors := errors ++ (if options.verifyDnsLength then lengthErrors encoded else [])
+  if allErrors.isEmpty then .ok (joinDots encoded) else .error allErrors
 
 /-- UTS #46 ToUnicode. -/
 def toUnicode (options : Options) (domain : String) : String × List Error :=

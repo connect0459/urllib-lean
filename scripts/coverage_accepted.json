@@ -113,5 +113,10 @@
     "regions": 1,
     "arms": 1,
     "reason": "the specialized loop tests again the constant result of negating isAscii that the enclosing branch has already decided"
+  },
+  "lp_Urllib___private_Init_Data_Array_Basic_0__Array_foldrMUnsafe_fold___at___00List_foldrTR___at___00Urllib_Idna_splitDots_spec__0_spec__0": {
+    "regions": 2,
+    "arms": 2,
+    "reason": "the accumulator of splitDots is never empty, so headD and tail never see the empty list"
   }
 }

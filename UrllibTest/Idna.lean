@@ -132,6 +132,20 @@ def longLabel (n : Nat) : String := String.ofList (List.replicate n 'a')
 def checks : List UrllibTest.Check := [
   { name := "the vector file is loaded", holds := allVectors.length + skippedLines > 6000 },
   { name := "the table agrees with the ASCII answers for every ASCII code point", holds := (List.range 128).all fun n => Idna.tableStatus (Char.ofNat n) == Idna.status (Char.ofNat n) },
+  { name := "splitting the empty string yields one empty label", holds := Idna.splitDots [] == [[]] },
+  { name := "splitting at a full stop yields the labels around it", holds := Idna.splitDots "a.bc".toList == ["a".toList, "bc".toList] },
+  { name := "splitting keeps the empty label after a trailing full stop", holds := Idna.splitDots "a.".toList == ["a".toList, []] },
+  { name := "splitting keeps the empty label before a leading full stop", holds := Idna.splitDots ".a".toList == [[], "a".toList] },
+  { name := "splitting a string without a full stop yields it whole", holds := Idna.splitDots "abc".toList == ["abc".toList] },
+  { name := "joining no labels yields the empty string", holds := Idna.joinDots [] == [] },
+  { name := "joining one label yields it unchanged", holds := Idna.joinDots ["ab".toList] == "ab".toList },
+  { name := "joining labels inserts full stops between them", holds := Idna.joinDots ["a".toList, [], "b".toList] == "a..b".toList },
+  { name := "joining inverts splitting", holds := ["", "a", "a.b", ".", "a..b.", ".a"].all fun s => Idna.joinDots (Idna.splitDots s.toList) == s.toList },
+  { name := "an ASCII label is not encoded", holds := Idna.encodeLabel "abc".toList == "abc".toList },
+  { name := "a non-ASCII label is encoded with the ACE prefix", holds := Idna.encodeLabel "bücher".toList == "xn--bcher-kva".toList },
+  { name := "converting a domain again does not change a successful result", holds := allVectors.all fun v => match Idna.toAscii lenient v.source with
+      | .ok value => asciiOf lenient value == some value
+      | .error _ => true },
   { name := "a status payload decodes valid", holds := Idna.decodeStatus ["V"] == some .valid },
   { name := "a status payload decodes disallowed", holds := Idna.decodeStatus ["X"] == some .disallowed },
   { name := "a status payload decodes ignored", holds := Idna.decodeStatus ["I"] == some .ignored },
