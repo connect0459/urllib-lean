@@ -1,4 +1,5 @@
 import Urllib.Host.Ipv4
+import Urllib.Idna
 import Urllib.Host.Ipv6
 import Urllib.PercentEncoding
 
@@ -32,8 +33,8 @@ inductive Error where
   | forbiddenHostCodePoint
   /-- A domain contains a forbidden domain code point. -/
   | forbiddenDomainCodePoint
-  /-- A domain contains a non-ASCII code point; domain-to-ASCII processing is not implemented. -/
-  | nonAsciiDomain
+  /-- UTS #46 processing of a domain recorded errors. -/
+  | idna (errors : List Idna.Error)
   /-- The domain is empty after processing. -/
   | emptyDomain
   deriving DecidableEq, Repr
@@ -57,13 +58,11 @@ def parseOpaque (input : List Char) : Except Error Host :=
     else
       .ok (.opaqueHost (PercentEncoding.utf8PercentEncode .c0Control (String.ofList input)))
 
-/-- Domain to ASCII without UTS #46: rejects non-ASCII input and lowercases ASCII letters; `xn--` labels pass through unchanged. -/
+/-- Domain to ASCII of the URL Standard: UTS #46 ToASCII without strictness; the empty result is an error. -/
 def domainToAscii (domain : List Char) : Except Error (List Char) :=
-  if domain.any (fun (c : Char) => decide (128 ≤ c.toNat)) then
-    .error .nonAsciiDomain
-  else
-    let lowered := domain.map Char.toLower
-    if lowered.isEmpty then .error .emptyDomain else .ok lowered
+  match Idna.toAsciiChars (Idna.Options.whatwg false) domain with
+  | .error errors => .error (.idna errors)
+  | .ok result => if result.isEmpty then .error .emptyDomain else .ok result
 
 /-- Parses a domain: percent-decodes, converts to ASCII, checks forbidden code points, and returns an IPv4 address when the domain ends in a number. -/
 def parseDomain (input : List Char) : Except Error Host := do

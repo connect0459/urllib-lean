@@ -1,6 +1,7 @@
 import Urllib.Host
 import Urllib.Host.Ipv4.Spec
 import Urllib.Host.Ipv6.Spec
+import Urllib.Idna.Spec
 import Urllib.PercentEncoding.Spec
 namespace Urllib.Host
 
@@ -11,11 +12,6 @@ private theorem ascii_char_cases (P : Char → Prop) (hP : ∀ n, n < 128 → P 
   rw [this]
   exact hP c.toNat h
 
-private theorem toLower_ascii (c : Char) (h : c.toNat < 128) :
-    c.toLower.toNat < 128 ∧ c.toLower.toLower = c.toLower := by
-  refine ascii_char_cases (fun c => c.toLower.toNat < 128 ∧ c.toLower.toLower = c.toLower) ?_ c h
-  decide
-
 private theorem isDigit_ascii (c : Char) (h : c.isDigit = true) : c.toNat < 128 := by
   unfold Char.isDigit at h
   simp at h
@@ -25,32 +21,30 @@ private theorem isDigit_ascii (c : Char) (h : c.isDigit = true) : c.toNat < 128 
   omega
 
 private theorem digit_dot_props (c : Char) (h : c.isDigit = true ∨ c = '.') :
-    c.toNat < 128 ∧ c ≠ '%' ∧ c.toLower = c ∧ Host.isForbiddenDomainCodePoint c = false := by
+    c.toNat < 128 ∧ c ≠ '%' ∧ Idna.AsciiClean c ∧ c ≠ 'x' ∧
+      Host.isForbiddenDomainCodePoint c = false := by
   have hlt : c.toNat < 128 := by
     rcases h with h | rfl
     · exact isDigit_ascii c h
     · decide
   refine ascii_char_cases (fun c => (c.isDigit = true ∨ c = '.') →
-    (c.toNat < 128 ∧ c ≠ '%' ∧ c.toLower = c ∧ Host.isForbiddenDomainCodePoint c = false)) ?_ c hlt h
+    (c.toNat < 128 ∧ c ≠ '%' ∧ Idna.AsciiClean c ∧ c ≠ 'x' ∧
+      Host.isForbiddenDomainCodePoint c = false)) ?_ c hlt h
   decide
 
-private theorem domainToAscii_stable (asc : List Char) (hascii : ∀ c ∈ asc, c.toNat < 128)
-    (hlow : asc.map Char.toLower = asc) (hne : asc ≠ []) :
+private theorem domainToAscii_of_fixed (asc : List Char) (hne : asc ≠ [])
+    (hfix : Idna.toAsciiChars (Idna.Options.whatwg false) asc = .ok asc) :
     Host.domainToAscii asc = .ok asc := by
   unfold Host.domainToAscii
-  have h1 : (asc.any fun (c : Char) => decide (128 ≤ c.toNat)) = false := by
-    simp only [List.any_eq_false, decide_eq_true_eq]
-    intro c hc
-    have := hascii c hc
-    omega
+  rw [hfix]
   have h2 : asc.isEmpty = false := by
     cases asc with
     | nil => exact absurd rfl hne
     | cons c cs => rfl
-  simp [h1, hlow, h2]
+  simp [h2]
 
 private theorem parseDomain_stable (asc : List Char) (hascii : ∀ c ∈ asc, c.toNat < 128 ∧ c ≠ '%')
-    (hlow : asc.map Char.toLower = asc) (hne : asc ≠ [])
+    (hd : Host.domainToAscii asc = .ok asc)
     (hforb : asc.any Host.isForbiddenDomainCodePoint = false) :
     Host.parseDomain asc =
       (if Ipv4.endsInNumber (String.ofList asc) = true then
@@ -62,7 +56,6 @@ private theorem parseDomain_stable (asc : List Char) (hascii : ∀ c ∈ asc, c.
       (PercentEncoding.percentDecodeString (String.ofList asc)) = String.ofList asc :=
     PercentEncoding.utf8DecodeWithoutBom_percentDecodeString_ascii _
       (by rw [String.toList_ofList]; exact hascii)
-  have hd := domainToAscii_stable asc (fun c hc => (hascii c hc).1) hlow hne
   unfold Host.parseDomain
   simp only [hdec, String.toList_ofList, hd, hforb, Bool.false_eq_true, ite_false, bind,
     Except.bind, pure, Except.pure]
@@ -113,16 +106,15 @@ theorem parse_serialize_ipv4 (a : Host.Ipv4) :
   unfold Host.parse
   rw [hl, parseChars_nonBracket _ _ hnb]
   simp only [Bool.false_eq_true, ite_false]
+  have hd := domainToAscii_of_fixed (Host.Ipv4.serializeChars a) (by simp [Host.Ipv4.serializeChars])
+    (Idna.toAsciiChars_ascii_fixed (Idna.Options.whatwg false) rfl rfl rfl _
+      (fun c hc => (hprops c hc).2.2.1) (fun c hc => (hprops c hc).2.2.2.1))
   rw [parseDomain_stable (Host.Ipv4.serializeChars a)
-    (fun c hc => ⟨(hprops c hc).1, (hprops c hc).2.1⟩)
-    (by
-      rw [List.map_congr_left (fun c hc => (hprops c hc).2.2.1)]
-      simp)
-    (by simp [Host.Ipv4.serializeChars])
+    (fun c hc => ⟨(hprops c hc).1, (hprops c hc).2.1⟩) hd
     (by
       simp only [List.any_eq_false]
       intro c hc
-      simpa using (hprops c hc).2.2.2)]
+      simpa using (hprops c hc).2.2.2.2)]
   have hs : String.ofList (Host.Ipv4.serializeChars a) = Host.Ipv4.serialize a := rfl
   rw [hs]
   simp only [Host.Ipv4.endsInNumber_serialize, ite_true]
@@ -234,30 +226,27 @@ private theorem parse_serialize_opaque (input : List Char) (t : String) (hne : i
     simp [PercentEncoding.utf8PercentEncode, hid]
 
 private theorem domainToAscii_ok_props (d asc : List Char) (h : Host.domainToAscii d = .ok asc) :
-    (∀ c ∈ d, c.toNat < 128) ∧ asc = d.map Char.toLower ∧ asc ≠ [] := by
+    (∀ c ∈ asc, Idna.AsciiClean c) ∧ Host.domainToAscii asc = .ok asc := by
   unfold Host.domainToAscii at h
-  by_cases h1 : (d.any fun (c : Char) => decide (128 ≤ c.toNat)) = true
-  · simp [h1] at h
-  · have h1' : (d.any fun (c : Char) => decide (128 ≤ c.toNat)) = false := by simpa using h1
-    simp only [h1', Bool.false_eq_true, ite_false] at h
-    by_cases h2 : (d.map Char.toLower).isEmpty = true
-    · simp [h2] at h
-    · have h2' : (d.map Char.toLower).isEmpty = false := by simpa using h2
-      simp only [h2', Bool.false_eq_true, ite_false, Except.ok.injEq] at h
-      refine ⟨?_, h.symm, ?_⟩
-      · intro c hc
-        simp only [List.any_eq_false, decide_eq_true_eq] at h1'
-        have := h1' c hc
-        omega
-      · rw [← h]
+  cases hr : Idna.toAsciiChars (Idna.Options.whatwg false) d with
+  | error e => simp [hr] at h
+  | ok r =>
+    simp only [hr] at h
+    by_cases hemp : r.isEmpty = true
+    · simp [hemp] at h
+    · have hemp' : r.isEmpty = false := by simpa using hemp
+      simp only [hemp', Bool.false_eq_true, ite_false, Except.ok.injEq] at h
+      subst h
+      have hne : r ≠ [] := by
         intro e
-        rw [e] at h2'
-        simp at h2'
+        simp [e] at hemp'
+      exact ⟨Idna.toAsciiChars_ok_clean _ rfl rfl d r hr,
+        domainToAscii_of_fixed r hne (Idna.toAsciiChars_idempotent _ rfl rfl d r hr)⟩
 
 private theorem parseDomain_cases (input : List Char) (h : Host) (hp : Host.parseDomain input = .ok h) :
     (∃ a, h = .ipv4 a) ∨
       (∃ asc, h = .domain (String.ofList asc) ∧ (∀ c ∈ asc, c.toNat < 128 ∧ c ≠ '%') ∧
-        asc.map Char.toLower = asc ∧ asc ≠ [] ∧ asc.any Host.isForbiddenDomainCodePoint = false ∧
+        Host.domainToAscii asc = .ok asc ∧ asc.any Host.isForbiddenDomainCodePoint = false ∧
         Ipv4.endsInNumber (String.ofList asc) = false) := by
   unfold Host.parseDomain at hp
   generalize PercentEncoding.utf8DecodeWithoutBom
@@ -281,24 +270,17 @@ private theorem parseDomain_cases (input : List Char) (h : Host) (hp : Host.pars
       · right
         have he' : Ipv4.endsInNumber (String.ofList asc) = false := by simpa using he
         simp only [he', Bool.false_eq_true, ite_false, pure, Except.pure, Except.ok.injEq] at hp
-        obtain ⟨hascii, hasc, hne⟩ := domainToAscii_ok_props _ _ hd
+        obtain ⟨hclean, hfix⟩ := domainToAscii_ok_props _ _ hd
         have hforb : ∀ c ∈ asc, Host.isForbiddenDomainCodePoint c = false := by
           simpa [List.any_eq_false] using hf'
-        refine ⟨asc, hp.symm, ?_, ?_, hne, hf', he'⟩
-        · intro c hc
-          refine ⟨?_, ?_⟩
-          · rw [hasc] at hc
-            obtain ⟨e, he2, rfl⟩ := List.mem_map.mp hc
-            exact (toLower_ascii e (hascii e he2)).1
-          · intro hcp
-            have := hforb c hc
-            rw [hcp] at this
-            revert this
-            decide
-        · rw [hasc, List.map_map]
-          apply List.map_congr_left
-          intro e he2
-          exact (toLower_ascii e (hascii e he2)).2
+        refine ⟨asc, hp.symm, ?_, hfix, hf', he'⟩
+        intro c hc
+        refine ⟨(hclean c hc).1, ?_⟩
+        intro hcp
+        have := hforb c hc
+        rw [hcp] at this
+        revert this
+        decide
 
 private theorem parseOpaque_ok (input : List Char) (h : Host) (hp : Host.parseOpaque input = .ok h) :
     h = .empty ∨ ∃ t, h = .opaqueHost t ∧ input ≠ [] := by
@@ -344,7 +326,7 @@ theorem parse_serialize_of_parse (input : String) (isOpaque : Bool) (h : Host)
     · have hf : isOpaque = false := by simpa using hop
       subst hf
       simp only [Bool.false_eq_true, ite_false] at hp
-      rcases parseDomain_cases _ _ hp with ⟨a, rfl⟩ | ⟨asc, rfl, hascii, hlow, hne, hforb, he⟩
+      rcases parseDomain_cases _ _ hp with ⟨a, rfl⟩ | ⟨asc, rfl, hascii, hd, hforb, he⟩
       · exact parse_serialize_ipv4 a
       · have hl : (Host.serialize (.domain (String.ofList asc))).toList = asc := by
           simp [Host.serialize]
@@ -358,7 +340,7 @@ theorem parse_serialize_of_parse (input : String) (isOpaque : Bool) (h : Host)
         unfold Host.parse
         rw [hl, parseChars_nonBracket _ _ hnb2]
         simp only [Bool.false_eq_true, ite_false]
-        rw [parseDomain_stable asc hascii hlow hne hforb]
+        rw [parseDomain_stable asc hascii hd hforb]
         simp [he]
 
 theorem serialize_parse_serialize (input : String) (isOpaque : Bool) (h : Host)
