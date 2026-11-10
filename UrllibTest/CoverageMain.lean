@@ -11,6 +11,8 @@ import UrllibTest.Unicode.Table
 import UrllibTest.Unicode.Normalization
 import UrllibTest.Unicode.Properties
 import UrllibTest.Idna
+import UrllibTest.Url
+import UrllibTest.Url.Parser
 
 def report (name : String) (failures : List String) : IO Nat := do
   IO.println s!"{name}: {failures.length} failures"
@@ -55,4 +57,6 @@ def main : IO UInt32 := do
   total := total + (← report "idna unicode (hyphens)" (UrllibTest.Idna.unicodeFailures UrllibTest.Idna.hyphenChecking))
   total := total + (← report "idna ascii (hyphens)" (UrllibTest.Idna.asciiFailures UrllibTest.Idna.hyphenChecking))
   total := total + (← report "idna checks" (UrllibTest.failedChecks UrllibTest.Idna.checks))
+  total := total + (← report "url wpt" UrllibTest.Url.failures)
+  total := total + (← report "url checks" (UrllibTest.failedChecks UrllibTest.Url.Parser.checks))
   return if total = 0 then 0 else 1

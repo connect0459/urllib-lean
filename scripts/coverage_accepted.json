@@ -118,5 +118,96 @@
     "regions": 2,
     "arms": 2,
     "reason": "the accumulator of splitDots is never empty, so headD and tail never see the empty list"
+  },
+  "lp_Urllib_Urllib_Url_Parser_relative": {
+    "regions": 2,
+    "arms": 2,
+    "reason": "the relative states are entered only with a base URL, so the missing-base arm never runs; the second region is a retested condition"
+  },
+  "lp_Urllib_Urllib_Url_Parser_relativeSlash": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the relative states are entered only with a base URL, so the missing-base arm never runs"
+  },
+  "lp_Urllib_Urllib_Url_Parser_schemeStart": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the compiler tests again a condition that the enclosing branch has already decided"
+  },
+  "lp_Urllib_Urllib_Url_Parser_noScheme": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the compiler tests again a condition that the enclosing branch has already decided"
+  },
+  "lp_Urllib_List_foldl___at___00Urllib_Url_Parser_authority_spec__0": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the compiler tests again a condition that the enclosing branch has already decided"
+  },
+  "lp_Urllib_Urllib_Url_Parser_authority": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the end of the input already ended the component in the enclosing test, so this arm never runs"
+  },
+  "lp_Urllib_Urllib_Url_Parser_host": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the end of the input already ended the component in the enclosing test, so this arm never runs"
+  },
+  "lp_Urllib_Urllib_Url_Parser_path": {
+    "regions": 2,
+    "arms": 2,
+    "reason": "the end of the input already ended the component in the enclosing test, so this arm never runs; the second region is a retested condition"
+  },
+  "lp_Urllib_Urllib_Url_Parser_file": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the compiler tests again a condition that the enclosing branch has already decided"
+  },
+  "lp_Urllib_Urllib_Url_Parser_fileSlash": {
+    "regions": 2,
+    "arms": 2,
+    "reason": "a base URL with the file scheme has a list path that starts with a segment or is empty, so the other shapes never run"
+  },
+  "lp_Urllib_Urllib_Url_Parser_fileHost": {
+    "regions": 2,
+    "arms": 2,
+    "reason": "the compiler tests again a condition that the enclosing branch has already decided"
+  },
+  "lp_Urllib_Urllib_Url_Parser_pathStart": {
+    "regions": 2,
+    "arms": 2,
+    "reason": "the compiler tests again a condition that the enclosing branch has already decided"
+  },
+  "lp_Urllib_Urllib_Url_Parser_opaquePath": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the opaque path state is entered only with an opaque path"
+  },
+  "lp_Urllib_Urllib_Url_Parser_query_queryEnd": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the query state is entered only with the query set to the empty string"
+  },
+  "lp_Urllib_Urllib_Url_Parser_fragment": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the fragment state is entered only with the fragment set to the empty string"
+  },
+  "lp_Urllib_Urllib_Url_Parser_run": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the step budget is larger than any run needs, so the budget never runs out"
+  },
+  "lp_Urllib_Urllib_Url_serialize": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the compiler tests again a condition that the enclosing branch has already decided"
+  },
+  "lp_Urllib_Urllib_Url_hostWithPort": {
+    "regions": 2,
+    "arms": 0,
+    "inlined": true,
+    "reason": "the compiler inlines this small function into its callers, so the standalone symbol is never called; its body runs inside the callers"
   }
 }

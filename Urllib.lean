@@ -10,6 +10,8 @@ import Urllib.Unicode.Properties
 import Urllib.Unicode.Normalization
 import Urllib.Idna
 import Urllib.Idna.Spec
+import Urllib.Url
+import Urllib.Url.Parser
 import Urllib.Host
 import Urllib.Host.Spec
 import Urllib.Host.Ipv4.Spec
