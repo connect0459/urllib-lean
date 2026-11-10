@@ -17,9 +17,11 @@ This library is a Lean counterpart of [connect0459/urllib](https://github.com/co
 | `Urllib.SearchParams` | `ofString`, `append`, `delete`, `get`, `getAll`, `has`, `set`, `sort` (UTF-16 order), `toString` |
 | `Urllib.Idna` | `toAscii`, `toUnicode` (UTS #46, nontransitional, Unicode 18.0.0), `Idna.Options`, `Options.whatwg` |
 | `Urllib.Unicode.Normalization` | `nfc` (Normalization Form C) |
+| `Urllib.Url` | `Url` record (`scheme`, `username`, `password`, `host`, `port`, `path`, `query`, `fragment`), `Url.serialize`, and the getters `protocol`, `hostWithPort`, `hostname`, `portText`, `pathname`, `search`, `hash` |
+| `Urllib.Url.Parser` | `Url.parse (input : String) (base : Option Url)`, `Url.origin`, `Url.ParseError` |
 | `Urllib.Host` | `Host`, `Host.parse (input : String) (isOpaque : Bool)`, `Host.serialize`, `Host.Ipv4`, `Host.Ipv6` |
 
-Domains are processed with UTS #46 as the URL Standard specifies (nontransitional processing, `CheckHyphens` off, `CheckBidi` and `CheckJoiners` on, STD3 rules and DNS length checks off); a failure is reported as `Host.Error.idna`. The Unicode data tables are generated from Unicode 18.0.0 by `scripts/generate_unicode_data.py` and committed.
+Domains follow the domain parser of the URL Standard: an ASCII domain is only lowercased (for web compatibility), and any other domain is processed with UTS #46 (nontransitional processing, `CheckHyphens` off, `CheckBidi` and `CheckJoiners` on, STD3 rules and DNS length checks off); a failure is reported as `Host.Error.idna`. The Unicode data tables are generated from Unicode 18.0.0 by `scripts/generate_unicode_data.py` and committed.
 
 ## Status
 
@@ -32,7 +34,7 @@ Pre-release (v0.1.0 in preparation). Nothing is published yet.
 | form-urlencoded | Done |
 | URLSearchParams (standalone) | Done |
 | UTS #46 (IDNA) | Done |
-| URL parser and WPT conformance | Planned |
+| URL parser and WPT conformance | Parser done (`urltestdata.json` passes); setters and helpers planned |
 | URL Pattern Standard | Planned |
 
 v0.1.0 will be released once all of the above are implemented.
@@ -68,6 +70,9 @@ open Urllib
 #eval Idna.toAscii (Idna.Options.whatwg false) "bücher.de"  -- Except.ok "xn--bcher-kva.de"
 #eval (Idna.toUnicode (Idna.Options.whatwg false) "xn--bcher-kva.de").1  -- "bücher.de"
 
+#eval (Url.parse "HTTP://u@H:80/a/./b/../c?q#f").map Url.serialize
+                                               -- Except.ok "http://u@h/a/c?q#f"
+
 #eval Host.parse "EXAMPLE.com" false           -- Except.ok (Host.domain "example.com")
 #eval Host.parse "faß.de" false                -- Except.ok (Host.domain "xn--fa-hia.de")
 #eval (Host.parse "0x7f.1" false).map Host.serialize     -- Except.ok "127.0.0.1"
@@ -77,7 +82,7 @@ open Urllib
 
 ## Compliance
 
-The percent-encoding and host algorithms follow the URL Standard but are not yet checked against the Web Platform Tests; WPT conformance arrives with the URL parser. UTS #46 is checked against every line of `IdnaTestV2.txt` of Unicode 18.0.0 (except two lines with unpaired surrogates, which a Lean string cannot hold) under four flag settings.
+The URL parser passes every test of `urltestdata.json` of the Web Platform Tests (899 tests, with `href`, each component, and `origin` compared). The setters and the `toascii.json` and `setters_tests.json` suites arrive with the later items. UTS #46 is checked against every line of `IdnaTestV2.txt` of Unicode 18.0.0 (except two lines with unpaired surrogates, which a Lean string cannot hold) under four flag settings.
 
 ### Proved properties
 
