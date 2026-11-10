@@ -121,7 +121,7 @@ Compared with existing URL implementations in other languages, restricted to the
 - [x] **Percent-encode a byte sequence** — `percentEncodeBytes` and `EncodeSet.containsByte`; agrees with `utf8PercentEncode` on the UTF-8 bytes of a string (checked by tests on every set; not proved)
 - [x] **Strict UTF-8 decode** — `utf8DecodeWithoutBomOrFail` returns `none` on malformed input (truncated, overlong, surrogate, above U+10FFFF, stray continuation)
 - [x] **`Host.empty` is never produced by `Host.parse`** — the opaque-host parser now returns `.empty` for empty input; `Host.parse_serialize_of_parse` covers it, and an empty domain stays an error (`emptyDomain`)
-- [ ] **`application/x-www-form-urlencoded` parse / serialize** — found by comparing against the reference implementations; WHATWG URL Standard section 5.1; planned as the first item of the remaining scope
+- [x] **`application/x-www-form-urlencoded` parse / serialize** — found by comparing against the reference implementations; WHATWG URL Standard section 5.1; implemented as the first item of the remaining scope
 - [ ] **Opaque-path trailing-space encoding** — deferred to the URL parser: its behavior is defined by the URL parser's handling of `?` and `#` after an opaque path, so it cannot be specified or tested in isolation
 
 ---
@@ -130,8 +130,8 @@ Compared with existing URL implementations in other languages, restricted to the
 
 Ordered by dependency. Each item: Red (tests, WPT vectors verbatim where they exist) → Green → Refactor; proofs are added incrementally and recorded per item. Coverage targets are agreed with the user before each item starts.
 
-1. [ ] **form-urlencoded** (`Urllib.FormUrlencoded`) — parse / serialize per URL Standard section 5.1; depends on `PercentEncoding`; WPT `urlencoded-parser` vectors
-2. [ ] **URLSearchParams, standalone part** — list of name-value pairs with `append`, `delete`, `get`, `getAll`, `has`, `set`, `sort`, `toString`; the `sort` order must follow UTF-16 code units, which differs from code point order for supplementary-plane characters (decide the comparison before implementing); WPT `urlsearchparams-*` vectors
+1. [x] **form-urlencoded** (`Urllib.FormUrlencoded`) — parse / serialize per URL Standard section 5.1; depends on `PercentEncoding`; WPT `urlencoded-parser` vectors
+2. [x] **URLSearchParams, standalone part** (`Urllib.SearchParams`) — `ofString`, `size`, `append`, `delete`, `get`, `getAll`, `has`, `set`, `sort`, `toString`; `sort` is stable and compares UTF-16 code units (decided 2026-11-10), which differs from code point order for supplementary-plane characters; coverage at 100% with the same target as before; tests are hand-written from the URL Standard semantics, and WPT `urlsearchparams-*` vectors are still to be imported
 3. [ ] **UTS #46 / IDNA** — mapping and status tables (pinned Unicode version, generated), NFC, Bidi and Joiner checks, `domainToAscii` / `domainToUnicode`; replaces the `nonAsciiDomain` rejection in `Host.parseDomain`; WPT `IdnaTestV2` vectors
 4. [ ] **URL parser** — state machine, URL record, serializer, getters; WPT `urltestdata` vectors; closes the opaque-path trailing-space gap above
 5. [ ] **URL setters and helpers** — setters, path utilities, file URL helpers, relative resolution

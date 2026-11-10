@@ -14,6 +14,7 @@ This library is a Lean counterpart of [connect0459/urllib](https://github.com/co
 | `Urllib.Punycode` | `encode : String → String`, `decode : String → Except DecodeError String` |
 | `Urllib.PercentEncoding` | `EncodeSet`, `utf8PercentEncode`, `percentEncodeBytes`, `percentDecode`, `utf8DecodeWithoutBom`, `utf8DecodeWithoutBomOrFail` |
 | `Urllib.FormUrlencoded` | `parse : String → Pairs`, `parseBytes`, `serialize : Pairs → String` |
+| `Urllib.SearchParams` | `ofString`, `append`, `delete`, `get`, `getAll`, `has`, `set`, `sort` (UTF-16 order), `toString` |
 | `Urllib.Host` | `Host`, `Host.parse (input : String) (isOpaque : Bool)`, `Host.serialize`, `Host.Ipv4`, `Host.Ipv6` |
 
 Domain handling does not implement UTS #46: non-ASCII domains are rejected with `Host.Error.nonAsciiDomain`, ASCII domains are lowercased, and `xn--` labels pass through unchanged.
@@ -26,7 +27,8 @@ Pre-release (v0.1.0 in preparation). Nothing is published yet.
 | :--- | :--- |
 | Punycode (RFC 3492) with a round-trip proof | Done |
 | Percent-encoding and host parsing | Done |
-| form-urlencoded and URLSearchParams | Planned |
+| form-urlencoded | Done |
+| URLSearchParams (standalone) | Done |
 | UTS #46 (IDNA) | Planned |
 | URL parser and WPT conformance | Planned |
 | URL Pattern Standard | Planned |

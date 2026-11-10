@@ -60,7 +60,7 @@ reach. The report prints how many regions and arms each exclusion removed, so no
   `scripts/coverage_accepted.json`: for example, `splitDots` never returns the empty list, so the
   `none` arm of `getLast?` after it cannot run, and the compiler sometimes tests again a condition
   that the enclosing branch has already decided. An entry allows at most the listed number of
-  uncovered regions and arms in that function; anything beyond that counts as a gap, and the report
+  uncovered regions and arms in that function (an entry with `"inlined": true` also removes a never-called function from the function count, for small functions that the compiler inlines into their callers); anything beyond that counts as a gap, and the report
   warns about entries that no longer apply.
 
 Branches inside big-number arithmetic live in `lean.h` and are not part of the library files.
