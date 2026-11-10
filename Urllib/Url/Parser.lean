@@ -44,6 +44,8 @@ inductive State where
   | authority
   /-- Host state. -/
   | host
+  /-- Hostname state, the host state as a state override of the hostname setter. -/
+  | hostname
   /-- Port state. -/
   | port
   /-- File state. -/
@@ -85,6 +87,8 @@ inductive Step where
   | next (machine : Machine) (pointer : Nat)
   /-- Fail. -/
   | fail (error : ParseError)
+  /-- Stop and return the URL as it is: the `return` of a state override. -/
+  | done (machine : Machine)
 
 /-- The segments of a list path; an opaque path has none. -/
 def pathSegments (path : UrlPath) : List String :=
@@ -149,6 +153,8 @@ structure Env where
   m : Machine
   /-- The pointer. -/
   pointer : Nat
+  /-- The state override, if the parse is run by a setter. -/
+  override : Option State
 
 namespace Env
 
@@ -179,6 +185,10 @@ def skip (e : Env) (m : Machine) : Step := .next m (e.pointer + 2)
 /-- The machine in another state. -/
 def go (e : Env) (state : State) : Machine := { e.m with state := state }
 
+/-- Fails; with a state override the URL is left as it is, because the setter then ignores the failure. -/
+def fail (e : Env) (error : ParseError) : Step :=
+  if e.override.isSome then .done e.m else .fail error
+
 /-- The machine with another URL in another state. -/
 def withUrl (e : Env) (url : Url) (state : State) : Machine := { e.m with url := url, state := state }
 
@@ -201,48 +211,62 @@ def schemeStart (e : Env) : Step :=
   match e.c with
   | some ch =>
     if ch.isAlpha then e.next { e.m with state := .scheme, buffer := e.m.buffer.push ch.toLower }
+    else if e.override.isSome then e.fail .missingBase
     else e.stay (e.go .noScheme)
-  | none => e.stay (e.go .noScheme)
+  | none => if e.override.isSome then e.fail .missingBase else e.stay (e.go .noScheme)
+
+/-- The scheme state at a colon: with a state override, the change of scheme is refused when it would cross the special boundary or break a file URL. -/
+def schemeColon (e : Env) : Step :=
+  let name := e.m.buffer
+  let url := e.url
+  let url' := { url with scheme := name }
+  let m' : Machine := { e.m with url := url', buffer := "" }
+  if e.override.isSome then
+    if (url.isSpecial && !isSpecialScheme name) || (!url.isSpecial && isSpecialScheme name) ||
+        ((url.hasCredentials || url.port.isSome) && name == "file") ||
+        (url.scheme == "file" && url.host == some .empty) then
+      .done e.m
+    else
+      let port := if url.port.isSome && url.port == defaultPort? name then none else url.port
+      .done { m' with url := { url' with port := port } }
+  else if name == "file" then e.next { m' with state := .file }
+  else if isSpecialScheme name then
+    match e.base with
+    | some b =>
+      if b.scheme == name then e.next { m' with state := .specialRelativeOrAuthority }
+      else e.next { m' with state := .specialAuthoritySlashes }
+    | none => e.next { m' with state := .specialAuthoritySlashes }
+  else if e.after == some '/' then e.skip { m' with state := .pathOrAuthority }
+  else e.next { m' with url := { url' with path := .opaque "" }, state := .opaquePath }
 
 /-- Scheme state. -/
 def scheme (e : Env) : Step :=
-  let restart : Step := .next { e.m with state := .noScheme, buffer := "" } 0
+  let restart : Step :=
+    if e.override.isSome then e.fail .missingBase else .next { e.m with state := .noScheme, buffer := "" } 0
   match e.c with
   | none => restart
   | some ch =>
     if ch.isAlphanum || ch == '+' || ch == '-' || ch == '.' then
       e.next { e.m with buffer := e.m.buffer.push ch.toLower }
-    else if ch == ':' then
-      let name := e.m.buffer
-      let url' := { e.url with scheme := name }
-      let m' : Machine := { e.m with url := url', buffer := "" }
-      if name == "file" then e.next { m' with state := .file }
-      else if isSpecialScheme name then
-        match e.base with
-        | some b =>
-          if b.scheme == name then e.next { m' with state := .specialRelativeOrAuthority }
-          else e.next { m' with state := .specialAuthoritySlashes }
-        | none => e.next { m' with state := .specialAuthoritySlashes }
-      else if e.after == some '/' then e.skip { m' with state := .pathOrAuthority }
-      else e.next { m' with url := { url' with path := .opaque "" }, state := .opaquePath }
+    else if ch == ':' then schemeColon e
     else restart
 
 /-- No scheme state. -/
 def noScheme (e : Env) : Step :=
   match e.base with
-  | none => .fail .missingBase
+  | none => e.fail .missingBase
   | some b =>
     if b.hasOpaquePath then
       if e.c == some '#' then
         e.next (e.withUrl { e.url with scheme := b.scheme, path := b.path, query := b.query, fragment := some "" } .fragment)
-      else .fail .missingBase
+      else e.fail .missingBase
     else if b.scheme != "file" then e.stay (e.go .relative)
     else e.stay (e.go .file)
 
 /-- Relative state. -/
 def relative (e : Env) : Step :=
   match e.base with
-  | none => .fail .missingBase
+  | none => e.fail .missingBase
   | some b =>
     let url' := { e.url with scheme := b.scheme }
     if e.c == some '/' || (url'.isSpecial && e.c == some '\\') then e.next (e.withUrl url' .relativeSlash)
@@ -262,7 +286,7 @@ def relativeSlash (e : Env) : Step :=
   else if e.c == some '/' then e.next (e.go .authority)
   else
     match e.base with
-    | none => .fail .missingBase
+    | none => e.fail .missingBase
     | some b =>
       e.stay (e.withUrl { e.url with username := b.username, password := b.password, host := b.host, port := b.port } .path)
 
@@ -281,28 +305,33 @@ def authority (e : Env) : Step :=
     e.next { m with url := { e.url with username := username, password := password }, buffer := "",
                     atSignSeen := true, passwordTokenSeen := seen }
   else if endsComponent e.special e.c then
-    if m.atSignSeen && m.buffer.isEmpty then .fail .hostMissing
+    if m.atSignSeen && m.buffer.isEmpty then e.fail .hostMissing
     else .next { m with state := .host, buffer := "" } (e.pointer - m.buffer.length)
   else
     match e.c with
     | some ch => e.next { m with buffer := m.buffer.push ch }
     | none => e.next m
 
-/-- Host state. -/
+/-- Host state and hostname state. -/
 def host (e : Env) : Step :=
   let m := e.m
-  if e.c == some ':' && !m.insideBrackets then
-    if m.buffer.isEmpty then .fail .emptyHost
+  if e.override.isSome && e.url.scheme == "file" then e.stay (e.go .fileHost)
+  else if e.c == some ':' && !m.insideBrackets then
+    if m.buffer.isEmpty then e.fail .emptyHost
+    else if e.override == some .hostname then e.fail .emptyHost
     else
       match parseHost e.url m.buffer with
-      | .error err => .fail err
+      | .error err => e.fail err
       | .ok h => e.next { m with url := { e.url with host := some h }, buffer := "", state := .port }
   else if endsComponent e.special e.c then
-    if e.special && m.buffer.isEmpty then .fail .emptyHost
+    if e.special && m.buffer.isEmpty then e.fail .emptyHost
+    else if e.override.isSome && m.buffer.isEmpty && (e.url.hasCredentials || e.url.port.isSome) then e.fail .emptyHost
     else
       match parseHost e.url m.buffer with
-      | .error err => .fail err
-      | .ok h => e.stay { m with url := { e.url with host := some h }, buffer := "", state := .pathStart }
+      | .error err => e.fail err
+      | .ok h =>
+        let m' : Machine := { m with url := { e.url with host := some h }, buffer := "", state := .pathStart }
+        if e.override.isSome then .done m' else e.stay m'
   else
     match e.c with
     | some ch =>
@@ -313,21 +342,23 @@ def host (e : Env) : Step :=
 /-- The end of the port state: validates the digits and drops a default port. -/
 def finishPort (e : Env) : Step :=
   let m := e.m
-  if m.buffer.isEmpty then e.stay (e.go .pathStart)
+  if m.buffer.isEmpty then
+    if e.override.isSome then e.fail .invalidPort else e.stay (e.go .pathStart)
   else
     let number := m.buffer.foldl (fun acc ch => acc * 10 + (ch.toNat - 48)) 0
-    if 65535 < number then .fail .invalidPort
+    if 65535 < number then e.fail .invalidPort
     else
       let port := if defaultPort? e.url.scheme == some number then none else some number
-      e.stay { m with url := { e.url with port := port }, buffer := "", state := .pathStart }
+      let m' : Machine := { m with url := { e.url with port := port }, buffer := "", state := .pathStart }
+      if e.override.isSome then .done m' else e.stay m'
 
 /-- Port state. -/
 def port (e : Env) : Step :=
   match e.c with
   | some ch =>
     if ch.isDigit then e.next { e.m with buffer := e.m.buffer.push ch }
-    else if endsComponent e.special e.c then finishPort e
-    else .fail .invalidPort
+    else if endsComponent e.special e.c || e.override.isSome then finishPort e
+    else e.fail .invalidPort
   | none => finishPort e
 
 /-- File state. -/
@@ -380,30 +411,35 @@ def fileHost (e : Env) : Step :=
 where
   fileHostEnd (e : Env) : Step :=
     let m := e.m
-    if isWindowsDriveLetter m.buffer.toList then e.stay (e.go .path)
-    else if m.buffer.isEmpty then e.stay (e.withUrl { e.url with host := some .empty } .pathStart)
+    if e.override.isNone && isWindowsDriveLetter m.buffer.toList then e.stay (e.go .path)
+    else if m.buffer.isEmpty then
+      let m' := e.withUrl { e.url with host := some .empty } .pathStart
+      if e.override.isSome then .done m' else e.stay m'
     else
       match parseHost e.url m.buffer with
-      | .error err => .fail err
+      | .error err => e.fail err
       | .ok h =>
         let h' := if h == .domain "localhost" then Host.empty else h
-        e.stay { m with url := { e.url with host := some h' }, buffer := "", state := .pathStart }
+        let m' : Machine := { m with url := { e.url with host := some h' }, buffer := "", state := .pathStart }
+        if e.override.isSome then .done m' else e.stay m'
 
 /-- Path start state. -/
 def pathStart (e : Env) : Step :=
   if e.special then
     if e.c == some '/' || e.c == some '\\' then e.next (e.go .path) else e.stay (e.go .path)
-  else if e.c == some '?' then startQuery e e.url
-  else if e.c == some '#' then startFragment e e.url
+  else if e.override.isNone && e.c == some '?' then startQuery e e.url
+  else if e.override.isNone && e.c == some '#' then startFragment e e.url
   else if e.c.isSome then
     if e.c == some '/' then e.next (e.go .path) else e.stay (e.go .path)
+  else if e.override.isSome && e.url.host.isNone then
+    e.next (e.withUrl { e.url with path := .list (pathSegments e.url.path ++ [""]) } e.m.state)
   else e.next e.m
 
 /-- Path state. -/
 def path (e : Env) : Step :=
   let m := e.m
   let slashEnd := e.c == some '/' || (e.special && e.c == some '\\')
-  if endsComponent e.special e.c || e.c == some '?' || e.c == some '#' then
+  if e.c.isNone || slashEnd || (e.override.isNone && (e.c == some '?' || e.c == some '#')) then
     let segments := pathSegments e.url.path
     let segments' :=
       if isDoubleDotSegment m.buffer then
@@ -444,7 +480,7 @@ def query (e : Env) : Step :=
   let m := e.m
   match e.c with
   | some ch =>
-    if ch == '#' then queryEnd e
+    if ch == '#' && e.override.isNone then queryEnd e
     else e.next { m with buffer := m.buffer.push ch }
   | none => queryEnd e
 where
@@ -481,7 +517,7 @@ def step (e : Env) : Step :=
   | .specialAuthorityIgnoreSlashes =>
     if e.c == some '/' || e.c == some '\\' then e.next e.m else e.stay (e.go .authority)
   | .authority => authority e
-  | .host => host e
+  | .host | .hostname => host e
   | .port => port e
   | .file => file e
   | .fileSlash => fileSlash e
@@ -493,14 +529,15 @@ def step (e : Env) : Step :=
   | .fragment => fragment e
 
 /-- Runs the state machine; `fuel` bounds the number of steps. -/
-def run (input : Array Char) (base : Option Url) : Nat → Machine → Nat → Except ParseError Url
+def run (input : Array Char) (base : Option Url) (override : Option State) : Nat → Machine → Nat → Except ParseError Url
   | 0, _, _ => .error .fuelExhausted
   | fuel + 1, m, pointer =>
     if input.size < pointer then .ok m.url
     else
-      match step { input := input, base := base, m := m, pointer := pointer } with
-      | .next m' pointer' => run input base fuel m' pointer'
+      match step { input := input, base := base, m := m, pointer := pointer, override := override } with
+      | .next m' pointer' => run input base override fuel m' pointer'
       | .fail err => .error err
+      | .done m' => .ok m'.url
 
 end Parser
 
@@ -517,7 +554,7 @@ def preprocess (input : String) : List Char :=
 /-- The basic URL parser of the URL Standard without a state override. -/
 def parse (input : String) (base : Option Url := none) : Except ParseError Url :=
   let chars := (preprocess input).toArray
-  run chars base (16 * (chars.size + 8))
+  run chars base none (16 * (chars.size + 8))
     { state := .schemeStart, url := emptyUrl, buffer := "", atSignSeen := false,
       insideBrackets := false, passwordTokenSeen := false } 0
 

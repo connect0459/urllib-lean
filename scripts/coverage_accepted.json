@@ -130,9 +130,9 @@
     "reason": "the relative states are entered only with a base URL, so the missing-base arm never runs"
   },
   "lp_Urllib_Urllib_Url_Parser_schemeStart": {
-    "regions": 1,
-    "arms": 1,
-    "reason": "the compiler tests again a condition that the enclosing branch has already decided"
+    "regions": 2,
+    "arms": 2,
+    "reason": "the compiler tests again a condition that the enclosing branch has already decided; the setter appends a colon, so the input never ends at the scheme start state"
   },
   "lp_Urllib_Urllib_Url_Parser_noScheme": {
     "regions": 1,
@@ -150,9 +150,9 @@
     "reason": "the end of the input already ended the component in the enclosing test, so this arm never runs"
   },
   "lp_Urllib_Urllib_Url_Parser_host": {
-    "regions": 1,
-    "arms": 1,
-    "reason": "the end of the input already ended the component in the enclosing test, so this arm never runs"
+    "regions": 2,
+    "arms": 2,
+    "reason": "the end of the input already ended the component in the enclosing test, so this arm never runs; the compiler also duplicates the short-circuit evaluation of the empty-host refusal, whose outcomes are all covered by the tests"
   },
   "lp_Urllib_Urllib_Url_Parser_path": {
     "regions": 2,
@@ -209,5 +209,25 @@
     "arms": 0,
     "inlined": true,
     "reason": "the compiler inlines this small function into its callers, so the standalone symbol is never called; its body runs inside the callers"
+  },
+  "lp_Urllib_Urllib_Url_parseWithOverride": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "a parse with a state override never fails, because every failure returns the URL as it is"
+  },
+  "lp_Urllib_Urllib_Url_setSearch": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the value is not empty here, so the test that its length reaches the length of the prefix never fails"
+  },
+  "lp_Urllib_Urllib_Url_setHash": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the value is not empty here, so the test that its length reaches the length of the prefix never fails"
+  },
+  "lp_Urllib_Urllib_Url_Parser_schemeColon": {
+    "regions": 2,
+    "arms": 3,
+    "reason": "the compiler duplicates the short-circuit evaluation of the refusal conditions; every outcome of the conditions is covered by the tests"
   }
 }

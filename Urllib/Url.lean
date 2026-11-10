@@ -53,6 +53,22 @@ def isSpecialScheme (scheme : String) : Bool :=
 def isSpecial (url : Url) : Bool :=
   isSpecialScheme url.scheme
 
+/-- Whether the URL has a username or a password. -/
+def hasCredentials (url : Url) : Bool :=
+  !url.username.isEmpty || !url.password.isEmpty
+
+/-- Whether the URL cannot have a username, a password, or a port: it has no host, an empty host, or the file scheme. -/
+def cannotHaveCredentials (url : Url) : Bool :=
+  match url.host with
+  | none | some .empty => true
+  | some _ => url.scheme == "file"
+
+/-- The segments of a list path; an opaque path has none. -/
+def pathSegments (url : Url) : List String :=
+  match url.path with
+  | .list segments => segments
+  | .opaque _ => []
+
 /-- Whether the URL has an opaque path. -/
 def hasOpaquePath (url : Url) : Bool :=
   match url.path with
