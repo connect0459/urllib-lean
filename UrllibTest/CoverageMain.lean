@@ -7,6 +7,10 @@ import UrllibTest.Host.Ipv4
 import UrllibTest.Host.Ipv6
 import UrllibTest.FormUrlencoded
 import UrllibTest.SearchParams
+import UrllibTest.Unicode.Table
+import UrllibTest.Unicode.Normalization
+import UrllibTest.Unicode.Properties
+import UrllibTest.Idna
 
 def report (name : String) (failures : List String) : IO Nat := do
   IO.println s!"{name}: {failures.length} failures"
@@ -40,4 +44,15 @@ def main : IO UInt32 := do
   total := total + (← report "form-urlencoded serialize" UrllibTest.FormUrlencoded.serializeFailures)
   total := total + (← report "form-urlencoded checks" (UrllibTest.failedChecks UrllibTest.FormUrlencoded.guardChecks))
   total := total + (← report "search params" (UrllibTest.failedChecks UrllibTest.SearchParams.checks))
+  total := total + (← report "unicode table" (UrllibTest.failedChecks UrllibTest.Unicode.Table.checks))
+  total := total + (← report "unicode properties" (UrllibTest.failedChecks UrllibTest.Unicode.Properties.checks))
+  total := total + (← report "normalization cases" UrllibTest.Unicode.Normalization.failures)
+  total := total + (← report "normalization checks" (UrllibTest.failedChecks UrllibTest.Unicode.Normalization.checks))
+  total := total + (← report "idna unicode (lenient)" (UrllibTest.Idna.unicodeFailures UrllibTest.Idna.lenient))
+  total := total + (← report "idna ascii (lenient)" (UrllibTest.Idna.asciiFailures UrllibTest.Idna.lenient))
+  total := total + (← report "idna unicode (strict)" (UrllibTest.Idna.unicodeFailures UrllibTest.Idna.strict))
+  total := total + (← report "idna ascii (strict)" (UrllibTest.Idna.asciiFailures UrllibTest.Idna.strict))
+  total := total + (← report "idna unicode (hyphens)" (UrllibTest.Idna.unicodeFailures UrllibTest.Idna.hyphenChecking))
+  total := total + (← report "idna ascii (hyphens)" (UrllibTest.Idna.asciiFailures UrllibTest.Idna.hyphenChecking))
+  total := total + (← report "idna checks" (UrllibTest.failedChecks UrllibTest.Idna.checks))
   return if total = 0 then 0 else 1

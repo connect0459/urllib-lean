@@ -5,6 +5,10 @@ import Urllib.PercentEncoding
 import Urllib.PercentEncoding.Spec
 import Urllib.FormUrlencoded
 import Urllib.SearchParams
+import Urllib.Unicode.Table
+import Urllib.Unicode.Properties
+import Urllib.Unicode.Normalization
+import Urllib.Idna
 import Urllib.Host
 import Urllib.Host.Spec
 import Urllib.Host.Ipv4.Spec

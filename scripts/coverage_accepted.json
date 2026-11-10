@@ -46,5 +46,72 @@
     "arms": 0,
     "inlined": true,
     "reason": "the compiler inlines this small function into its callers, so the standalone symbol is never called; its body runs inside the callers"
+  },
+  "lp_Urllib_List_foldlM___at___00Urllib_Unicode_parseHex_spec__0": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the compiler tests again an option that the enclosing branch has just matched as none"
+  },
+  "lp_Urllib_Urllib_Unicode_parseRange___redArg": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "String.splitOn never returns the empty list, so the second pattern of the line split never fails"
+  },
+  "lp_Urllib_Urllib_Unicode_parseDecompositionLine": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "String.splitOn never returns the empty list"
+  },
+  "lp_Urllib_Urllib_Unicode_parseCompositionLine": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the compiler tests again the length of the field list that the enclosing branches have already decided"
+  },
+  "lp_Urllib_Urllib_Unicode_bidiClass": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the Bidi_Class table covers every code point, so the lookup never fails"
+  },
+  "lp_Urllib_Urllib_Idna_tableStatus": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the mapping table covers every code point, so the lookup never fails"
+  },
+  "lp_Urllib_List_filterMapTR_go___at___00Urllib_Unicode_decompositionTable_spec__0": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "every line of the generated decomposition data is well formed"
+  },
+  "lp_Urllib_List_filterMapTR_go___at___00Urllib_Unicode_compositionTable_spec__0": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "every line of the generated composition data is well formed"
+  },
+  "lp_Urllib_Urllib_Unicode_compose": {
+    "regions": 2,
+    "arms": 2,
+    "reason": "the inlined binary search tests that the generated composition table is non-empty"
+  },
+  "lp_Urllib_Urllib_Idna_bidiOk": {
+    "regions": 2,
+    "arms": 2,
+    "reason": "the first class is not a nonspacing mark, so the classes left after dropping trailing nonspacing marks are never empty"
+  },
+  "lp_Urllib_Urllib_Idna_isRtlLabel": {
+    "regions": 2,
+    "arms": 0,
+    "inlined": true,
+    "reason": "the compiler inlines this small function into its callers, so the standalone symbol is never called; its body runs inside the callers"
+  },
+  "lp_Urllib_Urllib_Idna_toUnicodeChars": {
+    "regions": 2,
+    "arms": 0,
+    "inlined": true,
+    "reason": "the compiler inlines this small function into its callers, so the standalone symbol is never called; its body runs inside the callers"
+  },
+  "lp_Urllib_List_any___at___00Urllib_Idna_convertLabel_spec__0": {
+    "regions": 1,
+    "arms": 1,
+    "reason": "the specialized loop tests again the constant result of negating isAscii that the enclosing branch has already decided"
   }
 }
