@@ -15,9 +15,11 @@ This library is a Lean counterpart of [connect0459/urllib](https://github.com/co
 | `Urllib.PercentEncoding` | `EncodeSet`, `utf8PercentEncode`, `percentEncodeBytes`, `percentDecode`, `utf8DecodeWithoutBom`, `utf8DecodeWithoutBomOrFail` |
 | `Urllib.FormUrlencoded` | `parse : String → Pairs`, `parseBytes`, `serialize : Pairs → String` |
 | `Urllib.SearchParams` | `ofString`, `append`, `delete`, `get`, `getAll`, `has`, `set`, `sort` (UTF-16 order), `toString` |
+| `Urllib.Idna` | `toAscii`, `toUnicode` (UTS #46, nontransitional, Unicode 18.0.0), `Idna.Options`, `Options.whatwg` |
+| `Urllib.Unicode.Normalization` | `nfc` (Normalization Form C) |
 | `Urllib.Host` | `Host`, `Host.parse (input : String) (isOpaque : Bool)`, `Host.serialize`, `Host.Ipv4`, `Host.Ipv6` |
 
-Domain handling does not implement UTS #46: non-ASCII domains are rejected with `Host.Error.nonAsciiDomain`, ASCII domains are lowercased, and `xn--` labels pass through unchanged.
+Domains are processed with UTS #46 as the URL Standard specifies (nontransitional processing, `CheckHyphens` off, `CheckBidi` and `CheckJoiners` on, STD3 rules and DNS length checks off); a failure is reported as `Host.Error.idna`. The Unicode data tables are generated from Unicode 18.0.0 by `scripts/generate_unicode_data.py` and committed.
 
 ## Status
 
@@ -29,7 +31,7 @@ Pre-release (v0.1.0 in preparation). Nothing is published yet.
 | Percent-encoding and host parsing | Done |
 | form-urlencoded | Done |
 | URLSearchParams (standalone) | Done |
-| UTS #46 (IDNA) | Planned |
+| UTS #46 (IDNA) | Done |
 | URL parser and WPT conformance | Planned |
 | URL Pattern Standard | Planned |
 
@@ -63,7 +65,11 @@ open Urllib
 #eval FormUrlencoded.parse "a=b+c&d=%41"        -- [("a", "b c"), ("d", "A")]
 #eval FormUrlencoded.serialize [("a b", "c&d")] -- "a+b=c%26d"
 
+#eval Idna.toAscii (Idna.Options.whatwg false) "bücher.de"  -- Except.ok "xn--bcher-kva.de"
+#eval (Idna.toUnicode (Idna.Options.whatwg false) "xn--bcher-kva.de").1  -- "bücher.de"
+
 #eval Host.parse "EXAMPLE.com" false           -- Except.ok (Host.domain "example.com")
+#eval Host.parse "faß.de" false                -- Except.ok (Host.domain "xn--fa-hia.de")
 #eval (Host.parse "0x7f.1" false).map Host.serialize     -- Except.ok "127.0.0.1"
 #eval (Host.parse "[2001:db8:0:0:1:0:0:1]" false).map Host.serialize
                                                -- Except.ok "[2001:db8::1:0:0:1]"
@@ -71,7 +77,7 @@ open Urllib
 
 ## Compliance
 
-The percent-encoding and host algorithms follow the URL Standard but are not yet checked against the Web Platform Tests; WPT conformance arrives with the URL parser.
+The percent-encoding and host algorithms follow the URL Standard but are not yet checked against the Web Platform Tests; WPT conformance arrives with the URL parser. UTS #46 is checked against every line of `IdnaTestV2.txt` of Unicode 18.0.0 (except two lines with unpaired surrogates, which a Lean string cannot hold) under four flag settings.
 
 ### Proved properties
 
@@ -83,6 +89,9 @@ All proofs are checked by Lean; no `sorry` or additional axiom is used.
 - `PercentEncoding.percentDecode_utf8PercentEncode`: decoding after encoding restores the input when `%` is in the set or absent from the input (unconditionally for the component set).
 - `PercentEncoding.utf8PercentEncode_wellEncoded`: the output is a sequence of unencoded characters and `%XX` escapes.
 - `Host.Ipv4.parse_serialize` and `Host.Ipv6.parse_serialize`: parsing the serialization of an address returns the address.
+- `Idna.toAsciiChars_idempotent`: processing the result of a successful UTS #46 ToASCII again returns it unchanged.
+- `Idna.toAsciiChars_ok_clean`: the result of a successful ToASCII consists of ASCII code points that the mapping table keeps as is.
+- `Idna.nfc_ascii`: Normalization Form C does not change an ASCII string.
 - `Host.parse_serialize_of_parse`: a successfully parsed host re-parses to itself after serialization.
 
 ## Documentation

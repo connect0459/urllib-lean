@@ -67,6 +67,8 @@ Branches inside big-number arithmetic live in `lean.h` and are not part of the l
 
 ## Findings
 
+The Unicode data modules under `Urllib/Unicode/Data` are string constants without logic; they do not show up in the report. The lookups and parsers of the generated tables are measured, and the arms that the data makes unreachable (a table that covers every code point never fails a lookup) are accepted in `scripts/coverage_accepted.json`, each with its reason.
+
 State on 2026-11-04, after closing the test gaps:
 
 | Measure | Result |
