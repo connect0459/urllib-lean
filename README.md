@@ -3,7 +3,7 @@
 [![CI](https://github.com/connect0459/urllib-lean/actions/workflows/ci.yml/badge.svg)](https://github.com/connect0459/urllib-lean/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/connect0459/urllib-lean/blob/main/LICENSE)
 
-A [Lean 4](https://lean-lang.org) implementation of the [URL Standard](https://url.spec.whatwg.org/), aiming at conformance with the Web Platform Tests and at machine-checked properties of its core algorithms.
+A [Lean 4](https://lean-lang.org) implementation of the [URL Standard](https://url.spec.whatwg.org/), aiming for conformance with the Web Platform Tests and machine-checked properties of its core algorithms.
 
 This library is a Lean counterpart of [connect0459/urllib](https://github.com/connect0459/urllib) (MoonBit).
 
@@ -37,7 +37,7 @@ Pre-release (v0.1.0 in preparation). Nothing is published yet.
 | form-urlencoded | Done |
 | URLSearchParams (standalone) | Done |
 | UTS #46 (IDNA) | Done |
-| URL parser, setters, and WPT conformance | Done (`urltestdata.json`, `setters_tests.json`, and `toascii.json` pass) and the `urlsearchparams-*` and `url-searchparams` tests are carried over, the binding included |
+| URL parser, setters, and WPT conformance | Done (`urltestdata.json`, `setters_tests.json`, and `toascii.json` pass; the `urlsearchparams-*` and `url-searchparams` tests are carried over, including the binding) |
 | URL Pattern Standard | Done (`urlpatterntestdata.json` passes; see the limits of the regular expression engine below) |
 
 v0.1.0 will be released once all of the above are implemented.
@@ -88,7 +88,7 @@ open Urllib
 
 ## Limits of the regular expression engine
 
-URL Pattern compiles the regular expression groups of a pattern with `Urllib.Regex`, which implements the unicode-sets mode of JavaScript regular expressions as far as the URL Pattern tests need it: literals and escapes, classes with ranges, nested classes, subtraction and intersection, alternation, capturing, named and non-capturing groups, greedy and lazy quantifiers, anchors, word boundaries, and case folding of ASCII letters. Lookahead, lookbehind, backreferences, Unicode property escapes (`\p{...}`), and class strings (`\q{...}`) are reported as unsupported, so a pattern that uses them fails to construct. Case-insensitive matching folds ASCII letters only.
+URL Pattern compiles the regular expression groups of a pattern with `Urllib.Regex`, which implements the unicode-sets mode of JavaScript regular expressions to the extent the URL Pattern tests need it: literals and escapes, classes with ranges, nested classes, subtraction and intersection, alternation, capturing, named and non-capturing groups, greedy and lazy quantifiers, anchors, word boundaries, and case folding of ASCII letters. Lookahead, lookbehind, backreferences, Unicode property escapes (`\p{...}`), and class strings (`\q{...}`) are reported as unsupported, so a pattern that uses them fails to construct. Case-insensitive matching folds ASCII letters only.
 
 ## Compliance
 
@@ -113,7 +113,7 @@ All proofs are checked by Lean; no `sorry` or additional axiom is used.
 
 Every public declaration carries a doc-string. Proofs live in the `Spec` module next to each implementation module.
 
-- [docs/coverage.md](https://github.com/connect0459/urllib-lean/blob/main/docs/coverage.md) : Coverage measurement and accepted gaps
+- [docs/coverage.md](https://github.com/connect0459/urllib-lean/blob/main/docs/coverage.md): Coverage measurement and accepted gaps
 
 ## Contributing
 

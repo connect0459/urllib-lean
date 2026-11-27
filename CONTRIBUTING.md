@@ -46,7 +46,7 @@ This project follows **Red → Green → Refactor** (Detroit-school TDD):
 
 - Write a failing test first, then implement.
 - Use real objects; mocks are only permitted at external boundaries.
-- Test names describe **what business rule** is verified, not how.
+- Test names describe **which business rule** is verified, not how.
 
 Specifications are written as `example` and `#guard` in `UrllibTest/`. Where a property holds for all inputs, state it as a `theorem` as well.
 
@@ -75,7 +75,7 @@ tidy(punycode): name the bias adaptation constants
 1. Fork the repository and create a branch: `feat/xxx`, `fix/xxx`, `docs/xxx`.
 2. Follow the Red → Green → Refactor cycle.
 3. Run `just verify` and commit any resulting diffs.
-4. If the change touches the public API, update `README.md` so it reflects the new behaviour.
+4. If the change touches the public API, update `README.md` so it reflects the new behavior.
 5. Open a pull request. `sorry` and `axiom` are not accepted.
 
 ## Code style
