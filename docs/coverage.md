@@ -1,7 +1,7 @@
 # Measuring test coverage
 
 Lean has no coverage tool, and the tests that run during elaboration (`#guard`, `#eval`) are not
-measured by anything. This project measures coverage of the code that Lean compiles to C, by running
+measured. This project measures coverage of the code that Lean compiles to C, by running
 the same test tables from a native executable.
 
 ```sh
